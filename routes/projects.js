@@ -52,7 +52,6 @@ router.post("/", (req, res) => {
         newClient.save().then((clientData) => {
           const newProject = new Project({
             client: clientData._id,
-            constructor: constructor._id,
             constructeur: constructor._id,
             craftsmen: [],
             conversation: { messages: [] },
