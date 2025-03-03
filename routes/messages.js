@@ -37,7 +37,7 @@ router.post("/message", (req, res) => {
   // Envoie le message via Pusher
   pusher.trigger(channel, "message", {
     constructorName: constructorName,
-    firstName: firstName,
+    firstname: firstName,
     text: content,
     timestamp: new Date(),
   });
