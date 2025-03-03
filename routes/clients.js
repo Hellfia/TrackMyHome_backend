@@ -8,7 +8,6 @@ const Client = require("../models/clients");
 
 /* GET users listing. */
 
-
 router.post("/signin", (req, res) => {
   if (!checkBody(req.body, ["email", "password"])) {
     res.json({ result: false, error: "Missing or empty fields" });
