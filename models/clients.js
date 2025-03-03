@@ -16,4 +16,3 @@ const clientSchema = new mongoose.Schema({
 const Client = mongoose.model("clients", clientSchema);
 
 module.exports = Client;
-// Compare this snippet from TrackMyHomeApp-FrontEnd/screens/ConnexionScreen.js:

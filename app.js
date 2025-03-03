@@ -30,6 +30,5 @@ app.use("/projects", projectsRouter);
 app.use("/craftsmen", craftsmenRouter);
 app.use("/constructors", constructorsRouter);
 app.use("/messages", messagesRouter);
-app.use("/messages", messagesRouter);
 
 module.exports = app;
