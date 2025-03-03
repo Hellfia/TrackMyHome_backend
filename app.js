@@ -12,10 +12,6 @@ const projectsRouter = require("./routes/projects");
 const craftsmenRouter = require("./routes/craftsmen");
 const constructorsRouter = require("./routes/constructors");
 const messagesRouter = require("./routes/messages");
-const projectsRouter = require("./routes/projects");
-const craftsmenRouter = require("./routes/craftsmen");
-const constructorsRouter = require("./routes/constructors");
-const messagesRouter = require("./routes/messages");
 
 const app = express();
 
