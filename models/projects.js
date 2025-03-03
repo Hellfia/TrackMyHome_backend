@@ -20,19 +20,17 @@ const conversationSchema = new mongoose.Schema({
 });
 
 const projectSchema = new mongoose.Schema({
-  client: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "clients",
-  },
-  testconstructor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "constructors",
-  },
-  constructeur: {
+  clients: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "clients",
+    },
+  ],
+  constructor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "constructors",
   },
-  craftsmen: [
+  Craftsmen: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "craftsmen",

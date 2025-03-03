@@ -1,33 +1,50 @@
 const express = require("express");
 const router = express.Router();
-const bcrypt = require("bcrypt");
+const { checkBody } = require("../modules/checkBody");
 const uid2 = require("uid2");
-
+const bcrypt = require("bcrypt");
+require("../models/connection");
 const Constructor = require("../models/constructors");
 
-router.post("/", (req, res) => {
-  Constructor.findOne({ email: req.body.email }).then((data) => {
-    if (data === null) {
+router.post("/signup", (req, res) => {
+  if (!checkBody(req.body, ["email", "password"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+  Constructor.findOne({ email: req.body.email }).then((dbData) => {
+    if (dbData === null) {
       const hash = bcrypt.hashSync(req.body.password, 10);
 
-      const newConstructor = new Constructor({
+      const NewConstructor = new Constructor({
         constructorName: req.body.constructorName,
-        constructorAdress: req.body.constructorAdress,
-        constructorZip: req.body.constructorZip,
-        constructorCity: req.body.constructorCity,
         constructorSiret: req.body.constructorSiret,
-        profilePicture: "defaultPictureConstructor.png",
         email: req.body.email,
         password: hash,
+        profilePicture: "defaultPictureConstructor.png",
         token: uid2(32),
         role: "constructor",
       });
 
-      newConstructor.save().then((data) => {
-        res.json({ result: true, constructor: data });
+      NewConstructor.save().then(() => {
+        res.json({ result: true });
       });
     } else {
-      res.json({ result: false, error: "Constructor already exists" });
+      res.json({ result: false, error: "User already exists" });
+    }
+  });
+});
+
+router.post("/signin", (req, res) => {
+  if (!checkBody(req.body, ["email", "password"])) {
+    res.json({ result: false, error: "Missing or empty fields" });
+    return;
+  }
+
+  Constructor.findOne({ email: req.body.email }).then((data) => {
+    if (data && bcrypt.compareSync(req.body.password, data.password)) {
+      res.json({ result: true, token: data.token });
+    } else {
+      res.json({ result: false, error: "User not found or wrong password" });
     }
   });
 });
