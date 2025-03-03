@@ -6,7 +6,7 @@ const clientSchema = new mongoose.Schema({
   email: String,
   password: String,
   profilePicture: String,
-  constructionAdresse: String,
+  constructionAdress: String,
   constructionZipCode: String,
   constructionCity: String,
   token: String,
