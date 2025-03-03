@@ -20,13 +20,11 @@ const conversationSchema = new mongoose.Schema({
 });
 
 const projectSchema = new mongoose.Schema({
-  clients: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "clients",
-    },
-  ],
-  constructor: {
+  client: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "clients",
+  },
+  constructeur: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "constructors",
   },
