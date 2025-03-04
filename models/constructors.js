@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const constructorSchema = new mongoose.Schema({
+const constructeurSchema = new mongoose.Schema({
   constructorName: String,
   email: String,
   password: String,
@@ -10,6 +10,6 @@ const constructorSchema = new mongoose.Schema({
   role: String,
 });
 
-const Constructor = mongoose.model("constructors", constructorSchema);
+const Constructor = mongoose.model("constructors", constructeurSchema);
 
 module.exports = Constructor;

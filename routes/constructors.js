@@ -22,7 +22,7 @@ router.post("/signup", (req, res) => {
         password: hash,
         profilePicture: "defaultPictureConstructor.png",
         token: uid2(32),
-        role: "constructor",
+        role: "constructeur",
       });
 
       NewConstructor.save().then(() => {
