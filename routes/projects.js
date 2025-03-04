@@ -70,4 +70,22 @@ router.post("/", (req, res) => {
   });
 });
 
+router.get("/clients/:constructorId", (req, res) => {
+  const { constructorId } = req.params;
+
+  if (!constructorId) {
+    return res.json({ message: "constructorId est requis." });
+  }
+
+  Project.find({ constructeur: constructorId })
+    .populate("client")
+    .then((data) => {
+      if (data) {
+        res.json({ result: true, data: data });
+      } else {
+        res.json({ result: false, error: "Client not found !" });
+      }
+    });
+});
+
 module.exports = router;
