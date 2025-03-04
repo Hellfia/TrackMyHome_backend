@@ -6,8 +6,6 @@ const bcrypt = require("bcrypt");
 require("../models/connection");
 const Client = require("../models/clients");
 
-/* GET users listing. */
-
 router.post("/signin", (req, res) => {
   if (!checkBody(req.body, ["email", "password"])) {
     res.json({ result: false, error: "Missing or empty fields" });
@@ -19,6 +17,22 @@ router.post("/signin", (req, res) => {
       res.json({ result: true, token: data.token });
     } else {
       res.json({ result: false, error: "User not found or wrong password" });
+    }
+  });
+});
+
+router.get("/", (req, res) => {
+  Client.find({}).then((clients) => {
+    res.json({ result: true, clients });
+  });
+});
+
+router.get("/:id", (req, res) => {
+  Client.findById(req.params.id).then((client) => {
+    if (client) {
+      res.json({ result: true, client });
+    } else {
+      res.status(404).json({ result: false, error: "Client not found" });
     }
   });
 });
