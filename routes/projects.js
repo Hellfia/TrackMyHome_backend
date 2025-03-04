@@ -18,16 +18,16 @@ router.post("/", (req, res) => {
       "constructionCity",
       "email",
       "password",
-      "constructorId",
+      "constructeurId",
     ])
   ) {
     res.json({ result: false, error: "Missing or empty fields" });
     return;
   }
 
-  Constructor.findById(req.body.constructorId).then((constructor) => {
-    console.log(constructor);
-    if (!constructor) {
+  Constructor.findById(req.body.constructeurId).then((constructeur) => {
+    console.log(constructeur);
+    if (!constructeur) {
       res.json({ result: false, error: "Constructor not found" });
       return;
     }
@@ -52,7 +52,7 @@ router.post("/", (req, res) => {
         newClient.save().then((clientData) => {
           const newProject = new Project({
             client: clientData._id,
-            constructeur: constructor._id,
+            constructeur: constructeur._id,
             craftsmen: [],
             conversation: { messages: [] },
             documents: [],
