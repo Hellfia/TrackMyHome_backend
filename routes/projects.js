@@ -43,7 +43,7 @@ router.post("/", (req, res) => {
           constructionAdress: req.body.constructionAdress,
           constructionZipCode: req.body.constructionZipCode,
           constructionCity: req.body.constructionCity,
-          profilePicture: "defaultPictureClient.png",
+          profilePicture: "",
           email: req.body.email,
           password: hash,
           token: uid2(32),
@@ -100,7 +100,7 @@ router.get("/craftsmen/:constructorId", (req, res) => {
     .populate("Craftsmen")
     .then((data) => {
       if (data) {
-        res.json({ result: true, data: [data] });
+        res.json({ result: true, data: data });
       } else {
         res.json({ result: false, error: "Craftsman not found !" });
       }

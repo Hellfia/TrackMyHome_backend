@@ -20,7 +20,7 @@ router.post("/signup", (req, res) => {
         constructorSiret: req.body.constructorSiret,
         email: req.body.email,
         password: hash,
-        profilePicture: "defaultPictureConstructor.png",
+        profilePicture: "",
         token: uid2(32),
         role: "constructeur",
       });

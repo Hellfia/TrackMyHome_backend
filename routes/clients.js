@@ -27,8 +27,8 @@ router.get("/", (req, res) => {
   });
 });
 
-router.get("/:id", (req, res) => {
-  Client.findById(req.params.id).then((client) => {
+router.get("/:token", (req, res) => {
+  Client.findOne({ token: req.params.token }).then((client) => {
     if (client) {
       res.json({ result: true, client });
     } else {

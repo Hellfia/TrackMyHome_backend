@@ -8,6 +8,7 @@ const constructeurSchema = new mongoose.Schema({
   constructorSiret: Number,
   token: String,
   role: String,
+  craftsmen: [{ type: mongoose.Schema.Types.ObjectId, ref: "craftsmen" }],
 });
 
 const Constructor = mongoose.model("constructors", constructeurSchema);
