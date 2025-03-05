@@ -21,7 +21,6 @@ router.post("/", (req, res) => {
 
   Craftsmen.findOne({ craftsmanName: req.body.craftsmanName }).then(
     (craftsman) => {
-      console.log(craftsman);
       if (craftsman) {
         res.json({ result: false, error: "Craftsman not found" });
         return;

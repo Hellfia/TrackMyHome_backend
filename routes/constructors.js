@@ -6,6 +6,69 @@ const bcrypt = require("bcrypt");
 require("../models/connection");
 const Constructor = require("../models/constructors");
 
+router.put("/:token", (req, res) => {
+  // Vérifier si les champs nécessaires sont présents
+  if (
+    !checkBody(req.body, [
+      "email",
+      "password",
+      "constructorSiret",
+      "constructorName",
+    ])
+  ) {
+    return res.json({ result: false, error: "Missing or empty fields" });
+  }
+
+  // Rechercher le constructeur par ID
+  Constructor.findOne({ token: req.params.token })
+    .then((data) => {
+      if (!data) {
+        return res.json({ result: false, error: "Constructor not found" });
+      }
+
+      // Mettre à jour les champs du constructeur
+      const updateFields = {};
+
+      if (req.body.constructorName)
+        updateFields.constructorName = req.body.constructorName;
+      if (req.body.constructorSiret)
+        updateFields.constructorSiret = req.body.constructorSiret;
+      if (req.body.email) updateFields.email = req.body.email;
+      if (req.body.password) {
+        // Hacher le mot de passe avant de le mettre à jour
+        updateFields.password = bcrypt.hashSync(req.body.password, 10);
+      }
+
+      // Mettre à jour les informations dans la base de données
+      Constructor.findOneAndUpdate({ token: req.params.token }, updateFields, {
+        new: true,
+      })
+        .then((updatedData) => {
+          if (!updatedData) {
+            return res.json({
+              result: false,
+              error: "Failed to update the profile",
+            });
+          }
+
+          // Réponse avec le constructeur mis à jour
+          res.json({
+            result: true,
+            message: "Profile updated successfully",
+            constructor: updatedData,
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          res.json({ result: false, error: "Something went wrong" });
+        });
+    })
+    .catch((err) => {
+      console.error(err);
+      res.json({ result: false, error: "Constructor not found" });
+    });
+});
+
 router.post("/signup", (req, res) => {
   if (!checkBody(req.body, ["email", "password"])) {
     res.json({ result: false, error: "Missing or empty fields" });
