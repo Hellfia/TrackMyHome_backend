@@ -22,6 +22,7 @@ router.put("/:token", (req, res) => {
   // Rechercher le constructeur par ID
   Constructor.findOne({ token: req.params.token })
     .then((data) => {
+      console.log("lol", data);
       if (!data) {
         return res.json({ result: false, error: "Constructor not found" });
       }
