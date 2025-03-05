@@ -7,6 +7,7 @@ const Project = require("../models/projects");
 const Client = require("../models/clients");
 const { checkBody } = require("../modules/checkBody");
 const Constructor = require("../models/constructors");
+const Craftsman = require("../models/craftsmen");
 
 router.post("/", (req, res) => {
   if (
@@ -42,7 +43,7 @@ router.post("/", (req, res) => {
           constructionAdress: req.body.constructionAdress,
           constructionZipCode: req.body.constructionZipCode,
           constructionCity: req.body.constructionCity,
-          profilePicture: "defaultPictureClient.png",
+          profilePicture: "",
           email: req.body.email,
           password: hash,
           token: uid2(32),
@@ -84,6 +85,24 @@ router.get("/clients/:constructorId", (req, res) => {
         res.json({ result: true, data: data });
       } else {
         res.json({ result: false, error: "Client not found !" });
+      }
+    });
+});
+
+router.get("/craftsmen/:constructorId", (req, res) => {
+  const { constructorId } = req.params;
+
+  if (!constructorId) {
+    return res.json({ message: "constructorId est requis." });
+  }
+
+  Project.find({ constructeur: constructorId })
+    .populate("Craftsmen")
+    .then((data) => {
+      if (data) {
+        res.json({ result: true, data: data });
+      } else {
+        res.json({ result: false, error: "Craftsman not found !" });
       }
     });
 });
