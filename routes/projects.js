@@ -107,4 +107,32 @@ router.get("/craftsmen/:constructorId", (req, res) => {
     });
 });
 
+const OPENCAGE_API_KEY = process.env.OPEN_CAGE_API;
+
+router.post("/geocode", (req, res) => {
+  const { address } = req.body;
+
+  if (!address) {
+    res.json({ result: false, error: "Adresse manquante" });
+    return;
+  }
+
+  const encodedAddress = encodeURIComponent(address);
+  const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}`;
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.results.length > 0) {
+        const { lat, lng } = data.results[0].geometry;
+        res.json({
+          result: true,
+          location: { latitude: lat, longitude: lng },
+        });
+      } else {
+        res.json({ result: false, error: "Aucun résultat trouvé" });
+      }
+    });
+});
+
 module.exports = router;
