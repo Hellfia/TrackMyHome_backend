@@ -9,6 +9,8 @@ const clientSchema = new mongoose.Schema({
   constructionAdress: String,
   constructionZipCode: String,
   constructionCity: String,
+  constructionLat: String,
+  constructionLong: String,
   token: String,
   role: String,
 });
