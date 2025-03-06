@@ -112,5 +112,14 @@ router.post("/signin", (req, res) => {
     }
   });
 });
+router.get("/:token", (req, res) => {
+  Constructor.findOne({ token: req.params.token }).then((constructor) => {
+    if (constructor) {
+      res.json({ result: true, constructor });
+    } else {
+      res.status(404).json({ result: false, error: "Constructor not found" });
+    }
+  });
+});
 
 module.exports = router;
