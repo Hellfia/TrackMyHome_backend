@@ -71,7 +71,14 @@ router.put("/:token", (req, res) => {
 });
 
 router.post("/signup", (req, res) => {
-  if (!checkBody(req.body, ["email", "password"])) {
+  if (
+    !checkBody(req.body, [
+      "constructorName",
+      "constructorSiret",
+      "email",
+      "password",
+    ])
+  ) {
     res.json({ result: false, error: "Missing or empty fields" });
     return;
   }
@@ -84,6 +91,7 @@ router.post("/signup", (req, res) => {
         constructorSiret: req.body.constructorSiret,
         email: req.body.email,
         password: hash,
+        clients: [],
         profilePicture: "",
         token: uid2(32),
         role: "constructeur",

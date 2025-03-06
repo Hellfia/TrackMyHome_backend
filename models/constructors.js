@@ -8,6 +8,7 @@ const constructeurSchema = new mongoose.Schema({
   constructorSiret: Number,
   token: String,
   role: String,
+  clients: [{ type: mongoose.Schema.Types.ObjectId, ref: "clients" }],
   craftsmen: [{ type: mongoose.Schema.Types.ObjectId, ref: "craftsmen" }],
 });
 

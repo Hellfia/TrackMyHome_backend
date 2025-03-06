@@ -19,6 +19,14 @@ const conversationSchema = new mongoose.Schema({
   messages: [messageSchema],
 });
 
+const stepSchema = new mongoose.Schema({
+  date: Date,
+  dateEnd: Date,
+  status: String,
+  uri: String, // uri de cloudinary
+  content: String,
+});
+
 const projectSchema = new mongoose.Schema({
   client: {
     type: mongoose.Schema.Types.ObjectId,
@@ -35,6 +43,7 @@ const projectSchema = new mongoose.Schema({
     },
   ],
   conversation: conversationSchema,
+  steps: [stepSchema],
   documents: [documentSchema],
   comments: [commentSchema],
 });
