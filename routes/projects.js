@@ -7,7 +7,8 @@ const Project = require("../models/projects");
 const Client = require("../models/clients");
 const { checkBody } = require("../modules/checkBody");
 const Constructor = require("../models/constructors");
-const Craftsman = require("../models/craftsmen");
+
+const OPENCAGE_API_KEY = process.env.OPEN_CAGE_API;
 
 router.post("/", (req, res) => {
   if (
@@ -27,7 +28,6 @@ router.post("/", (req, res) => {
   }
 
   Constructor.findById(req.body.constructeurId).then((constructeur) => {
-    console.log(constructeur);
     if (!constructeur) {
       res.json({ result: false, error: "Constructor not found" });
       return;
@@ -37,35 +37,57 @@ router.post("/", (req, res) => {
       if (data === null) {
         const hash = bcrypt.hashSync(req.body.password, 10);
 
-        const newClient = new Client({
-          firstname: req.body.firstname,
-          lastname: req.body.lastname,
-          constructionAdress: req.body.constructionAdress,
-          constructionZipCode: req.body.constructionZipCode,
-          constructionCity: req.body.constructionCity,
-          profilePicture: "",
-          email: req.body.email,
-          password: hash,
-          token: uid2(32),
-          role: "client",
-        });
+        // Adresse complète pour géocodage
+        const fullAddress = `${req.body.constructionAdress}, ${req.body.constructionZipCode} ${req.body.constructionCity}`;
+        const encodedAddress = encodeURIComponent(fullAddress);
+        const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}`;
 
-        newClient.save().then((clientData) => {
-          const newProject = new Project({
-            client: clientData._id,
-            constructeur: constructeur._id,
-            craftsmen: [],
-            conversation: { messages: [] },
-            documents: [],
-            comments: [],
-          });
+        // Récupération des coordonnées via l'API OpenCage
+        fetch(url)
+          .then((response) => response.json())
+          .then((geoData) => {
+            if (geoData.results.length > 0) {
+              const { lat, lng } = geoData.results[0].geometry;
 
-          newProject.save().then((projectData) => {
-            res.json({ result: true, project: projectData });
+              const newClient = new Client({
+                firstname: req.body.firstname,
+                lastname: req.body.lastname,
+                constructionAdress: req.body.constructionAdress,
+                constructionZipCode: req.body.constructionZipCode,
+                constructionCity: req.body.constructionCity,
+                constructionLat: lat,
+                constructionLong: lng,
+                profilePicture: "",
+                email: req.body.email,
+                password: hash,
+                token: uid2(32),
+                role: "client",
+              });
+
+              newClient.save().then((clientData) => {
+                const newProject = new Project({
+                  client: clientData._id,
+                  constructeur: constructeur._id,
+                  craftsmen: [],
+                  conversation: { messages: [] },
+                  documents: [],
+                  comments: [],
+                });
+
+                newProject.save().then((projectData) => {
+                  res.json({ result: true, project: projectData });
+                });
+              });
+            } else {
+              res.json({ result: false, error: "Unable to geocode address" });
+            }
+          })
+          .catch((error) => {
+            console.error("Error during geocoding:", error);
+            res.json({ result: false, error: "Geocoding API error" });
           });
-        });
       } else {
-        res.json({ result: false, error: "User already exists" });
+        res.json({ result: false, error: "Client already exists" });
       }
     });
   });
@@ -103,34 +125,6 @@ router.get("/craftsmen/:constructorId", (req, res) => {
         res.json({ result: true, data: data });
       } else {
         res.json({ result: false, error: "Craftsman not found !" });
-      }
-    });
-});
-
-const OPENCAGE_API_KEY = process.env.OPEN_CAGE_API;
-
-router.post("/geocode", (req, res) => {
-  const { address } = req.body;
-
-  if (!address) {
-    res.json({ result: false, error: "Adresse manquante" });
-    return;
-  }
-
-  const encodedAddress = encodeURIComponent(address);
-  const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}`;
-
-  fetch(url)
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.results.length > 0) {
-        const { lat, lng } = data.results[0].geometry;
-        res.json({
-          result: true,
-          location: { latitude: lat, longitude: lng },
-        });
-      } else {
-        res.json({ result: false, error: "Aucun résultat trouvé" });
       }
     });
 });

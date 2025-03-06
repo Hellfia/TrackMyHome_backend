@@ -5,6 +5,8 @@ require("../models/connection");
 const { checkBody } = require("../modules/checkBody");
 const Constructor = require("../models/constructors");
 
+const OPENCAGE_API_KEY = process.env.OPEN_CAGE_API;
+
 router.post("/", (req, res) => {
   if (
     !checkBody(req.body, [
@@ -24,30 +26,60 @@ router.post("/", (req, res) => {
   Craftsmen.findOne({ craftsmanName: req.body.craftsmanName }).then(
     (craftsman) => {
       if (craftsman) {
-        res.json({ result: false, error: "Craftsman not found" });
+        res.json({ result: false, error: "Craftsman already exists" });
         return;
       }
-      const newCraftman = new Craftsmen({
-        craftsmanName: req.body.craftsmanName,
-        craftsmanLogo: req.body.craftsmanLogo,
-        craftsmanAddress: req.body.craftsmanAddress,
-        craftsmanZip: req.body.craftsmanZip,
-        craftsmanCity: req.body.craftsmanCity,
-        phoneNumber: req.body.phoneNumber,
-      });
-      newCraftman.save().then((savedCraftsman) => {
-        Constructor.findOneAndUpdate(
-          { token: req.body.constructeurToken },
-          { $push: { craftsmen: savedCraftsman._id } },
-          { new: true }
-        )
-          .then(() => {
-            res.json({ result: true, data: savedCraftsman });
-          })
-          .catch(() => {
-            res.json({ result: false, error: "Craftman already exists" });
-          });
-      });
+
+      // Adresse complète pour géocodage
+      const fullAddress = `${req.body.craftsmanAddress}, ${req.body.craftsmanZip} ${req.body.craftsmanCity}`;
+      const encodedAddress = encodeURIComponent(fullAddress);
+      const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}`;
+
+      // Récupération des coordonnées via l'API OpenCage
+      fetch(url)
+        .then((response) => response.json())
+        .then((geoData) => {
+          if (geoData.results.length > 0) {
+            const { lat, lng } = geoData.results[0].geometry;
+
+            // Création du nouveau craftsman avec les coordonnées géographiques
+            const newCraftman = new Craftsmen({
+              craftsmanName: req.body.craftsmanName,
+              craftsmanLogo: req.body.craftsmanLogo,
+              craftsmanAddress: req.body.craftsmanAddress,
+              craftsmanZip: req.body.craftsmanZip,
+              craftsmanCity: req.body.craftsmanCity,
+              craftsmanLat: lat,
+              craftsmanLong: lng,
+              phoneNumber: req.body.phoneNumber,
+            });
+
+            newCraftman.save().then((savedCraftsman) => {
+              // Ajout du craftsman dans le constructeur correspondant
+              Constructor.findOneAndUpdate(
+                { token: req.body.constructeurToken },
+                { $push: { craftsmen: savedCraftsman._id } },
+                { new: true }
+              )
+                .then(() => {
+                  res.json({ result: true, data: savedCraftsman });
+                })
+                .catch((error) => {
+                  console.error("Error updating constructor:", error);
+                  res.json({
+                    result: false,
+                    error: "Error linking craftsman to constructor",
+                  });
+                });
+            });
+          } else {
+            res.json({ result: false, error: "Unable to geocode address" });
+          }
+        })
+        .catch((error) => {
+          console.error("Error during geocoding:", error);
+          res.json({ result: false, error: "Geocoding API error" });
+        });
     }
   );
 });

@@ -6,6 +6,8 @@ const craftsmanSchema = new mongoose.Schema({
   craftsmanAddress: String,
   craftsmanZip: String,
   craftsmanCity: String,
+  craftsmanLat: String,
+  craftsmanLong: String,
   phoneNumber: Number,
 });
 
