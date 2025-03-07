@@ -2,6 +2,10 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const uid2 = require("uid2");
+const uniqid = require("uniqid");
+const cloudinary = require("cloudinary").v2;
+const fs = require("fs");
+const fileUpload = require("express-fileupload");
 
 const Project = require("../models/projects");
 const Client = require("../models/clients");
@@ -235,6 +239,40 @@ router.get("/craftsmen/:constructorId", (req, res) => {
         res.json({ result: false, error: "Craftsman not found !" });
       }
     });
+});
+
+router.post("/upload", (req, res) => {
+  // Vérifiez si un fichier a été envoyé
+  if (!req.files || !req.files.document) {
+    return res.status(400).json({ result: false, error: "No file uploaded" });
+  }
+
+  const document = req.files.document;
+
+  // Générez un nom de fichier unique avec uniqid
+  const uniqueFilename = `${uniqid()}-${document.name}`;
+
+  // Upload sur Cloudinary (en utilisant un nom de fichier unique pour éviter les conflits)
+  cloudinary.uploader.upload(
+    document.tempFilePath,
+    {
+      public_id: uniqueFilename, // Utilisation du nom unique pour éviter les conflits
+      resource_type: "auto", // Cela permet de traiter automatiquement différents types de fichiers (images, PDF, etc.)
+    },
+    (error, result) => {
+      if (error) {
+        console.error("Cloudinary upload error:", error);
+        return res.status(500).json({ result: false, error: "Upload failed" });
+      }
+
+      // En cas de succès
+      res.json({
+        result: true,
+        fileUrl: result.secure_url, // URL sécurisée du fichier uploadé
+        filePublicId: result.public_id, // ID public du fichier
+      });
+    }
+  );
 });
 
 module.exports = router;
