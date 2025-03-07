@@ -20,6 +20,7 @@ const conversationSchema = new mongoose.Schema({
 });
 
 const stepSchema = new mongoose.Schema({
+  name: String,
   date: Date,
   dateEnd: Date,
   status: String,
