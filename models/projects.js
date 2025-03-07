@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const documentSchema = new mongoose.Schema({
+  name: String,
   date: Date,
   uri: String, // uri de cloudinary
 });

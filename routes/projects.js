@@ -242,37 +242,38 @@ router.get("/craftsmen/:constructorId", (req, res) => {
 });
 
 router.post("/upload", (req, res) => {
-  // Vérifiez si un fichier a été envoyé
-  if (!req.files || !req.files.document) {
+  console.log("req.body", req.body);
+  if (!req.body.file) {
     return res.status(400).json({ result: false, error: "No file uploaded" });
   }
+  if (!req.body.projectId) {
+    console.log("req.body.if", req.body);
+    return res
+      .status(400)
+      .json({ result: false, error: "Project ID is required" });
+  }
 
-  const document = req.files.document;
+  const projectId = req.body.projectId;
+  const document = req.body.file;
 
-  // Générez un nom de fichier unique avec uniqid
-  const uniqueFilename = `${uniqid()}-${document.name}`;
-
-  // Upload sur Cloudinary (en utilisant un nom de fichier unique pour éviter les conflits)
-  cloudinary.uploader.upload(
-    document.tempFilePath,
-    {
-      public_id: uniqueFilename, // Utilisation du nom unique pour éviter les conflits
-      resource_type: "auto", // Cela permet de traiter automatiquement différents types de fichiers (images, PDF, etc.)
-    },
-    (error, result) => {
-      if (error) {
-        console.error("Cloudinary upload error:", error);
-        return res.status(500).json({ result: false, error: "Upload failed" });
-      }
-
-      // En cas de succès
+  Project.findByIdAndUpdate(
+    projectId,
+    { $push: { documents: document } },
+    { new: true }
+  )
+    .then((updatedProject) => {
       res.json({
         result: true,
-        fileUrl: result.secure_url, // URL sécurisée du fichier uploadé
-        filePublicId: result.public_id, // ID public du fichier
+        documents: updatedProject.documents,
+        project: updatedProject,
       });
-    }
-  );
+    })
+    .catch((updateError) => {
+      console.error("Error updating project:", updateError);
+      res
+        .status(500)
+        .json({ result: false, error: "Failed to update project" });
+    });
 });
 
 module.exports = router;
