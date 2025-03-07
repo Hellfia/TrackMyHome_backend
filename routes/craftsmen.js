@@ -35,14 +35,12 @@ router.post("/", (req, res) => {
       const encodedAddress = encodeURIComponent(fullAddress);
       const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}`;
 
-      // Récupération des coordonnées via l'API OpenCage
       fetch(url)
         .then((response) => response.json())
         .then((geoData) => {
           if (geoData.results.length > 0) {
             const { lat, lng } = geoData.results[0].geometry;
 
-            // Création du nouveau craftsman avec les coordonnées géographiques
             const newCraftman = new Craftsmen({
               craftsmanName: req.body.craftsmanName,
               craftsmanLogo: req.body.craftsmanLogo,
