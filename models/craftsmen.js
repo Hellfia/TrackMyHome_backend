@@ -8,7 +8,7 @@ const craftsmanSchema = new mongoose.Schema({
   craftsmanCity: String,
   craftsmanLat: String,
   craftsmanLong: String,
-  phoneNumber: Number,
+  phoneNumber: String,
 });
 
 const Craftsman = mongoose.model("craftsmen", craftsmanSchema);

@@ -11,7 +11,6 @@ router.post("/", (req, res) => {
   if (
     !checkBody(req.body, [
       "craftsmanName",
-      "craftsmanLogo",
       "craftsmanAddress",
       "craftsmanZip",
       "craftsmanCity",

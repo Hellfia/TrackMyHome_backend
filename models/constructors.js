@@ -5,7 +5,7 @@ const constructeurSchema = new mongoose.Schema({
   email: String,
   password: String,
   profilePicture: String,
-  constructorSiret: Number,
+  constructorSiret: String,
   token: String,
   role: String,
   clients: [{ type: mongoose.Schema.Types.ObjectId, ref: "clients" }],
