@@ -6,38 +6,47 @@ const bcrypt = require("bcrypt");
 require("../models/connection");
 const Constructor = require("../models/constructors");
 
-router.put("/:token", (req, res) => {
-  // Vérifier si les champs nécessaires sont présents
-  if (
-    !checkBody(req.body, [
-      "email",
-      "password",
-      "constructorSiret",
-      "constructorName",
-    ])
-  ) {
-    return res.json({ result: false, error: "Missing or empty fields" });
-  }
-
-  // Rechercher le constructeur par ID
+// Route PATCH pour mettre à jour les informations du constructeur
+router.patch("/:token", (req, res) => {
+  // Rechercher le constructeur par son token
   Constructor.findOne({ token: req.params.token })
     .then((data) => {
-      console.log("lol", data);
       if (!data) {
         return res.json({ result: false, error: "Constructor not found" });
       }
 
-      // Mettre à jour les champs du constructeur
+      // Créer un objet pour les champs modifiés
       const updateFields = {};
 
-      if (req.body.constructorName)
+      if (
+        req.body.constructorName &&
+        req.body.constructorName !== data.constructorName
+      ) {
         updateFields.constructorName = req.body.constructorName;
-      if (req.body.constructorSiret)
+      }
+
+      if (
+        req.body.constructorSiret &&
+        req.body.constructorSiret !== data.constructorSiret
+      ) {
         updateFields.constructorSiret = req.body.constructorSiret;
-      if (req.body.email) updateFields.email = req.body.email;
-      if (req.body.password) {
+      }
+
+      if (req.body.email && req.body.email !== data.email) {
+        updateFields.email = req.body.email;
+      }
+
+      if (req.body.password && req.body.password !== data.password) {
         // Hacher le mot de passe avant de le mettre à jour
         updateFields.password = bcrypt.hashSync(req.body.password, 10);
+      }
+
+      // Si aucun champ n'est fourni, retourner une erreur
+      if (Object.keys(updateFields).length === 0) {
+        return res.json({
+          result: false,
+          error: "No fields to update",
+        });
       }
 
       // Mettre à jour les informations dans la base de données
