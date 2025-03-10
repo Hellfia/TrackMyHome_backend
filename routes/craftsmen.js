@@ -94,7 +94,7 @@ router.get("/:token", (req, res) => {
 });
 
 // Modifier un artisan par nom
-router.put("/:craftsmanName", (req, res) => {
+router.patch("/:craftsmanName", (req, res) => {
   const updates = req.body;
 
   Craftsmen.findOneAndUpdate(

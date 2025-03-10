@@ -290,13 +290,9 @@ router.post("/upload", (req, res) => {
     });
 });
 
-router.put("/updateStep/:projectId/:stepId", (req, res) => {
+router.patch("/updateStep/:projectId/:stepId", (req, res) => {
   const { projectId, stepId } = req.params;
   const { status, date, dateEnd, content } = req.body;
-
-  if (!checkBody(req.body, ["status", "date", "dateEnd"])) {
-    return res.json({ result: false, error: "Missing or empty fields" });
-  }
 
   Project.findById(projectId)
     .then((project) => {

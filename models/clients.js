@@ -3,7 +3,10 @@ const mongoose = require("mongoose");
 const clientSchema = new mongoose.Schema({
   firstname: String,
   lastname: String,
-  email: String,
+  email: {
+    type: String,
+    unique: true,
+  },
   password: String,
   profilePicture: String,
   constructionAdress: String,
@@ -12,7 +15,10 @@ const clientSchema = new mongoose.Schema({
   constructionLat: String,
   constructionLong: String,
   phoneNumber: String,
-  token: String,
+  token: {
+    type: String,
+    unique: true,
+  },
   role: String,
 });
 
