@@ -11,6 +11,7 @@ const clientSchema = new mongoose.Schema({
   constructionCity: String,
   constructionLat: String,
   constructionLong: String,
+  phoneNumber: Number,
   token: String,
   role: String,
 });
