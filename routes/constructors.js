@@ -91,28 +91,48 @@ router.post("/signup", (req, res) => {
     res.json({ result: false, error: "Missing or empty fields" });
     return;
   }
-  Constructor.findOne({ email: req.body.email }).then((dbData) => {
-    if (dbData === null) {
-      const hash = bcrypt.hashSync(req.body.password, 10);
 
-      const NewConstructor = new Constructor({
-        constructorName: req.body.constructorName,
-        constructorSiret: req.body.constructorSiret,
-        email: req.body.email,
-        password: hash,
-        clients: [],
-        profilePicture: "",
-        token: uid2(32),
-        role: "constructeur",
-      });
+  Constructor.findOne({ email: req.body.email })
+    .then((dbData) => {
+      if (dbData === null) {
+        const hash = bcrypt.hashSync(req.body.password, 10);
 
-      NewConstructor.save().then(() => {
-        res.json({ result: true });
+        const NewConstructor = new Constructor({
+          constructorName: req.body.constructorName,
+          constructorSiret: req.body.constructorSiret,
+          email: req.body.email,
+          password: hash,
+          clients: [],
+          profilePicture: "",
+          token: uid2(32),
+          role: "constructeur",
+        });
+
+        NewConstructor.save()
+          .then((data) => {
+            res.json({
+              result: true,
+              constructorId: data._id,
+              token: data.token,
+              role: data.role,
+            });
+          })
+          .catch((error) => {
+            res.json({
+              result: false,
+              error: "Erreur lors de l'enregistrement",
+            });
+          });
+      } else {
+        res.json({ result: false, error: "User already exists" });
+      }
+    })
+    .catch((error) => {
+      res.json({
+        result: false,
+        error: "Erreur lors de la recherche de l'utilisateur",
       });
-    } else {
-      res.json({ result: false, error: "User already exists" });
-    }
-  });
+    });
 });
 
 router.get("/:token", (req, res) => {

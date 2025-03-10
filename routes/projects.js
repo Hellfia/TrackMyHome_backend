@@ -5,8 +5,8 @@ const uid2 = require("uid2");
 
 const Project = require("../models/projects");
 const Client = require("../models/clients");
+const Constructor = require("../models/clients");
 const { checkBody } = require("../modules/checkBody");
-const Constructor = require("../models/constructors");
 
 const OPENCAGE_API_KEY = process.env.OPEN_CAGE_API;
 
