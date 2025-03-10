@@ -315,6 +315,22 @@ router.put("/updateStep/:projectId/:stepId", (req, res) => {
       res.json({ result: false, error: "Failed to find project" });
     });
 });
+router.get("/:constructorId", (req, res) => {
+  const { constructorId } = req.params;
+
+  if (!constructorId) {
+    return res.json({ message: "constructorId est requis." });
+  }
+
+  Project.find({ constructeur: constructorId })
+  .then((data) => {
+    if (data) {
+      res.json({ result: true, data: data });
+    } else {
+      res.json({ result: false, error: "Project not found !" });
+    }
+  });
+});
 
 router.delete("/:projectId", (req, res) => {
   const { projectId } = req.params;
