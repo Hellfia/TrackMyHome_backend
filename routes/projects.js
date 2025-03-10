@@ -21,6 +21,7 @@ router.post("/", (req, res) => {
       "email",
       "password",
       "constructeurId",
+      "phoneNumber",
     ])
   ) {
     res.json({ result: false, error: "Missing or empty fields" });
@@ -52,6 +53,7 @@ router.post("/", (req, res) => {
               const newClient = new Client({
                 firstname: req.body.firstname,
                 lastname: req.body.lastname,
+                phoneNumber: req.body.phoneNumber,
                 constructionAdress: req.body.constructionAdress,
                 constructionZipCode: req.body.constructionZipCode,
                 constructionCity: req.body.constructionCity,
