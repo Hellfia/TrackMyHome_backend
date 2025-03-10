@@ -332,4 +332,62 @@ router.get("/:constructorId", (req, res) => {
   });
 });
 
+router.delete("/:projectId", (req, res) => {
+  const { projectId } = req.params;
+
+  // Étape 1 : Trouver le projet par son ID
+  Project.findById(projectId)
+    .then((project) => {
+      if (!project) {
+        return res.json({ result: false, error: "Project not found" });
+      }
+
+      // Étape 2 : Récupérer l'ID du client associé au projet
+      const clientId = project.client;
+
+      // Étape 3 : Supprimer le projet
+      Project.findByIdAndDelete(projectId)
+        .then(() => {
+          // Étape 4 : Supprimer le client
+          Client.findByIdAndDelete(clientId)
+            .then(() => {
+              // Supprimer également le client du constructeur
+              Constructor.findByIdAndUpdate(
+                project.constructeur,
+                { $pull: { clients: clientId } },
+                { new: true }
+              )
+                .then(() => {
+                  res.json({
+                    result: true,
+                    message: "Project and client deleted successfully",
+                  });
+                })
+                .catch((error) => {
+                  console.error(
+                    "Error removing client from constructor:",
+                    error
+                  );
+                  res.json({
+                    result: false,
+                    error: "Error removing client from constructor",
+                  });
+                });
+            })
+            .catch((error) => {
+              console.error("Error deleting client:", error);
+              res.json({ result: false, error: "Error deleting client" });
+            });
+        })
+        .catch((error) => {
+          console.error("Error deleting project:", error);
+          res.json({ result: false, error: "Error deleting project" });
+        });
+    })
+    .catch((error) => {
+      console.error("Error fetching project:", error);
+      res.json({ result: false, error: "Error fetching project" });
+    });
+});
+
 module.exports = router;
