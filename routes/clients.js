@@ -21,11 +21,8 @@ router.get("/:token", (req, res) => {
   });
 });
 
-router.put("/:token", (req, res) => {
+router.patch("/:token", (req, res) => {
   // Vérifier si les champs nécessaires sont présents
-  if (!checkBody(req.body, ["email", "password", "firstname", "lastname"])) {
-    return res.json({ result: false, error: "Missing or empty fields" });
-  }
 
   // Rechercher le constructeur par ID
   Client.findOne({ token: req.params.token })
