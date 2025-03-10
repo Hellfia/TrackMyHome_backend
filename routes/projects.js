@@ -219,6 +219,25 @@ router.get("/clients/:constructorId", (req, res) => {
     });
 });
 
+router.get("/chantier/:clientId", (req, res) => {
+  const { clientId } = req.params;
+
+  if (!clientId) {
+    return res.json({ message: "clientId est requis." });
+  }
+
+  Project.findOne({ client: clientId })
+    .populate("client")
+    .then((data) => {
+      console.log(data);
+      if (data) {
+        res.json({ result: true, data: data });
+      } else {
+        res.json({ result: false, error: "Client not found !" });
+      }
+    });
+});
+
 router.get("/craftsmen/:constructorId", (req, res) => {
   const { constructorId } = req.params;
 
