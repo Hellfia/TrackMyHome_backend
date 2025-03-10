@@ -93,4 +93,56 @@ router.get("/:token", (req, res) => {
     });
 });
 
+// Modifier un artisan par nom
+router.put("/:craftsmanName", (req, res) => {
+  const updates = req.body;
+
+  Craftsmen.findOneAndUpdate(
+    { craftsmanName: req.params.craftsmanName }, // Recherche par nom
+    updates, // Données à mettre à jour
+    { new: true } // Retourner l'objet mis à jour
+  )
+    .then((updatedCraftsman) => {
+      if (updatedCraftsman) {
+        res.json({ result: true, data: updatedCraftsman });
+      } else {
+        res.status(404).json({ result: false, error: "Craftsman not found" });
+      }
+    })
+    .catch((error) => {
+      console.error("Error updating craftsman:", error);
+      res.status(500).json({ result: false, error: "Internal server error" });
+    });
+});
+
+// Supprimer un artisan par nom
+router.delete("/:craftsmanName", (req, res) => {
+  Craftsmen.findOneAndDelete({ craftsmanName: req.params.craftsmanName }) // Recherche et suppression
+    .then((deletedCraftsman) => {
+      if (deletedCraftsman) {
+        // Retirer l'artisan du constructeur
+        Constructor.updateMany(
+          { craftsmen: deletedCraftsman._id },
+          { $pull: { craftsmen: deletedCraftsman._id } }
+        )
+          .then(() => {
+            res.json({ result: true, data: deletedCraftsman });
+          })
+          .catch((error) => {
+            console.error("Error removing craftsman from constructor:", error);
+            res.status(500).json({
+              result: false,
+              error: "Error unlinking craftsman from constructor",
+            });
+          });
+      } else {
+        res.status(404).json({ result: false, error: "Craftsman not found" });
+      }
+    })
+    .catch((error) => {
+      console.error("Error deleting craftsman:", error);
+      res.status(500).json({ result: false, error: "Internal server error" });
+    });
+});
+
 module.exports = router;
