@@ -98,6 +98,10 @@ router.post("/signup", (req, res) => {
       "constructorSiret",
       "email",
       "password",
+      "city",
+      "zipCode",
+      "address",
+      "phoneNumber",
     ])
   ) {
     res.json({ result: false, error: "Missing or empty fields" });
