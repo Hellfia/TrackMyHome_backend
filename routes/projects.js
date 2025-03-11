@@ -228,6 +228,7 @@ router.get("/chantier/:clientId", (req, res) => {
 
   Project.findOne({ client: clientId })
     .populate("client")
+    .populate("constructeur")
     .then((data) => {
       console.log(data);
       if (data) {
