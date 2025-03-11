@@ -32,6 +32,18 @@ router.patch("/:token", (req, res) => {
         updateFields.constructorSiret = req.body.constructorSiret;
       }
 
+      if (req.body.city && req.body.city !== data.city) {
+        updateFields.city = req.body.city;
+      }
+      if (req.body.address && req.body.address !== data.address) {
+        updateFields.address = req.body.address;
+      }
+      if (req.body.zipCode && req.body.zipCode !== data.zipCode) {
+        updateFields.zipCode = req.body.zipCode;
+      }
+      if (req.body.phoneNumber && req.body.phoneNumber !== data.phoneNumber) {
+        updateFields.phoneNumber = req.body.phoneNumber;
+      }
       if (req.body.email && req.body.email !== data.email) {
         updateFields.email = req.body.email;
       }
@@ -102,6 +114,10 @@ router.post("/signup", (req, res) => {
           constructorSiret: req.body.constructorSiret,
           email: req.body.email,
           password: hash,
+          phoneNumber: req.body.phoneNumber,
+          zipCode: req.body.zipCode,
+          address: req.body.address,
+          city: req.body.city,
           clients: [],
           profilePicture: "",
           token: uid2(32),
