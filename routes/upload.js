@@ -17,7 +17,7 @@ router.post("/:projectId", (req, res) => {
   r2.upload(params)
     .promise()
     .then(() => {
-      const imageUrl = `${process.env.R2_PUBLIC_URL}/${file.name}`;
+      const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
 
       Project.findByIdAndUpdate(
         req.params.projectId,
