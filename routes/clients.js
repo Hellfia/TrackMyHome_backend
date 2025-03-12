@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 require("../models/connection");
 const Client = require("../models/clients");
-const { checkBody } = require("../modules/checkBody");
 const bcrypt = require("bcrypt");
 
 router.get("/", (req, res) => {
@@ -22,8 +21,6 @@ router.get("/:token", (req, res) => {
 });
 
 router.patch("/:token", (req, res) => {
-  // Vérifier si les champs nécessaires sont présents
-
   // Rechercher le constructeur par ID
   Client.findOne({ token: req.params.token })
     .then((data) => {

@@ -22,269 +22,286 @@ router.post("/", (req, res) => {
       "password",
       "constructeurId",
       "phoneNumber",
+      "token",
     ])
   ) {
     res.json({ result: false, error: "Missing or empty fields" });
     return;
   }
 
-  Constructor.findById(req.body.constructeurId).then((constructeur) => {
-    if (!constructeur) {
-      res.json({ result: false, error: "Constructor not found" });
-      return;
-    }
-
-    Client.findOne({ email: req.body.email }).then((data) => {
-      if (data === null) {
-        const hash = bcrypt.hashSync(req.body.password, 10);
-
-        // Adresse complète pour géocodage
-        const fullAddress = `${req.body.constructionAdress}, ${req.body.constructionZipCode} ${req.body.constructionCity}`;
-        const encodedAddress = encodeURIComponent(fullAddress);
-        const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}`;
-
-        // Récupération des coordonnées via l'API OpenCage
-        fetch(url)
-          .then((response) => response.json())
-          .then((geoData) => {
-            if (geoData.results.length > 0) {
-              const { lat, lng } = geoData.results[0].geometry;
-
-              const newClient = new Client({
-                firstname: req.body.firstname,
-                lastname: req.body.lastname,
-                phoneNumber: req.body.phoneNumber,
-                constructionAdress: req.body.constructionAdress,
-                constructionZipCode: req.body.constructionZipCode,
-                constructionCity: req.body.constructionCity,
-                constructionLat: lat,
-                constructionLong: lng,
-                profilePicture: "",
-                email: req.body.email,
-                password: hash,
-                token: uid2(32),
-                role: "client",
-              });
-
-              newClient.save().then((clientData) => {
-                // Création du projet
-                const newProject = new Project({
-                  client: clientData._id,
-                  constructeur: constructeur._id,
-                  craftsmen: [],
-                  steps: [
-                    {
-                      name: "Études préliminaires",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Préparation du terrain",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Fondations",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Élévation des murs",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Charpente et toiture",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Menuiseries extérieures",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Isolation et cloisonnement",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Plomberie, électricité",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Revêtements",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Finitions",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                    {
-                      name: "Réception des travaux",
-                      date: "",
-                      dateEnd: "",
-                      status: "À venir",
-                      uri: "",
-                      content: "",
-                    },
-                  ],
-                  conversation: { messages: [] },
-                  documents: [],
-                  comments: [],
-                });
-
-                newProject.save().then((projectData) => {
-                  // Ajout du client au constructeur
-                  Constructor.findByIdAndUpdate(
-                    req.body.constructeurId,
-                    { $push: { clients: clientData._id } },
-                    { new: true }
-                  )
-                    .then(() => {
-                      res.json({ result: true, project: projectData });
-                    })
-                    .catch((error) => {
-                      console.error("Error updating constructor:", error);
-                      res.json({
-                        result: false,
-                        error: "Error linking client to constructor",
-                      });
-                    });
-                });
-              });
-            } else {
-              res.json({ result: false, error: "Unable to geocode address" });
-            }
-          })
-          .catch((error) => {
-            console.error("Error during geocoding:", error);
-            res.json({ result: false, error: "Geocoding API error" });
-          });
-      } else {
-        res.json({ result: false, error: "Client already exists" });
-      }
-    });
-  });
-});
-
-router.get("/clients/:constructorId", (req, res) => {
-  const { constructorId } = req.params;
-
-  if (!constructorId) {
-    return res.json({ message: "constructorId est requis." });
-  }
-
-  Project.find({ constructeur: constructorId })
-    .populate("client")
-    .then((data) => {
-      if (data) {
-        res.json({ result: true, data: data });
-      } else {
-        res.json({ result: false, error: "Client not found !" });
-      }
-    });
-});
-
-router.get("/chantier/:clientId", (req, res) => {
-  const { clientId } = req.params;
-
-  if (!clientId) {
-    return res.json({ message: "clientId est requis." });
-  }
-
-  Project.findOne({ client: clientId })
-    .populate("client")
-    .populate("constructeur")
-    .then((data) => {
-      console.log(data);
-      if (data) {
-        res.json({ result: true, data: data });
-      } else {
-        res.json({ result: false, error: "Client not found !" });
-      }
-    });
-});
-
-router.get("/craftsmen/:constructorId", (req, res) => {
-  const { constructorId } = req.params;
-
-  if (!constructorId) {
-    return res.json({ message: "constructorId est requis." });
-  }
-
-  Project.find({ constructeur: constructorId })
-    .populate("Craftsmen")
-    .then((data) => {
-      if (data) {
-        res.json({ result: true, data: data });
-      } else {
-        res.json({ result: false, error: "Craftsman not found !" });
-      }
-    });
-});
-
-router.post("/upload/:projectId", (req, res) => {
-  const file = req.files.file;
-  const name = file.name + uid2(16);
-  const params = {
-    Bucket: process.env.R2_BUCKET_DOCUMENTS,
-    Key: name,
-    Body: file.data,
-    ContentType: file.mimetype,
-  };
-  r2.upload(params)
-    .promise()
-    .then(() => {
-      const imageUrl = `${process.env.R2_PUBLIC_URL}/${file.name}`;
-
-      Project.findByIdAndUpdate(
-        req.params.projectId,
-        {
-          $push: {
-            documents: { uri: imageUrl, date: Date.now(), name: file.name },
-          },
-        },
-        { new: true }
-      ).then((updatedDocument) => {
+  // Vérification du constructeur avec le token
+  Constructor.findOne({ _id: req.body.constructeurId, token: req.body.token })
+    .then((constructeur) => {
+      if (!constructeur) {
         res.json({
-          result: true,
-          documents: updatedDocument.documents,
-          project: updatedDocument,
+          result: false,
+          error: "Constructeur introuvable ou token invalide",
         });
+        return;
+      }
+
+      // Vérification si un client avec cet email existe déjà
+      Client.findOne({ email: req.body.email }).then((data) => {
+        if (data === null) {
+          const hash = bcrypt.hashSync(req.body.password, 10);
+
+          // Adresse complète pour géocodage
+          const fullAddress = `${req.body.constructionAdress}, ${req.body.constructionZipCode} ${req.body.constructionCity}`;
+          const encodedAddress = encodeURIComponent(fullAddress);
+          const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}`;
+
+          // Récupération des coordonnées via l'API OpenCage
+          fetch(url)
+            .then((response) => response.json())
+            .then((geoData) => {
+              if (geoData.results.length > 0) {
+                const { lat, lng } = geoData.results[0].geometry;
+
+                const newClient = new Client({
+                  firstname: req.body.firstname,
+                  lastname: req.body.lastname,
+                  phoneNumber: req.body.phoneNumber,
+                  constructionAdress: req.body.constructionAdress,
+                  constructionZipCode: req.body.constructionZipCode,
+                  constructionCity: req.body.constructionCity,
+                  constructionLat: lat,
+                  constructionLong: lng,
+                  profilePicture: "",
+                  email: req.body.email,
+                  password: hash,
+                  token: uid2(32),
+                  role: "client",
+                });
+
+                newClient.save().then((clientData) => {
+                  // Création du projet
+                  const newProject = new Project({
+                    client: clientData._id,
+                    constructeur: constructeur._id,
+                    craftsmen: [],
+                    steps: [
+                      {
+                        name: "Études préliminaires",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Préparation du terrain",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Fondations",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Élévation des murs",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Charpente et toiture",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Menuiseries extérieures",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Isolation et cloisonnement",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Plomberie, électricité",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Revêtements",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Finitions",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                      {
+                        name: "Réception des travaux",
+                        date: "",
+                        dateEnd: "",
+                        status: "À venir",
+                        uri: "",
+                        content: "",
+                      },
+                    ],
+                    documents: [],
+                    comments: [],
+                  });
+
+                  newProject.save().then((projectData) => {
+                    // Ajout du client au constructeur
+                    Constructor.findByIdAndUpdate(
+                      req.body.constructeurId,
+                      { $push: { clients: clientData._id } },
+                      { new: true }
+                    )
+                      .then(() => {
+                        res.json({ result: true, project: projectData });
+                      })
+                      .catch((error) => {
+                        console.error("Error updating constructor:", error);
+                        res.json({
+                          result: false,
+                          error:
+                            "Erreur lors de la liaison du client au constructeur",
+                        });
+                      });
+                  });
+                });
+              } else {
+                res.json({
+                  result: false,
+                  error: "Impossible de géocoder l'adresse",
+                });
+              }
+            })
+            .catch((error) => {
+              console.error("Error during geocoding:", error);
+              res.json({
+                result: false,
+                error: "Erreur avec l'API de géocodage",
+              });
+            });
+        } else {
+          res.json({ result: false, error: "Le client existe déjà" });
+        }
+      });
+    })
+    .catch((error) => {
+      console.error("Error finding constructor:", error);
+      res.json({
+        result: false,
+        error: "Erreur lors de la vérification du constructeur",
+      });
+    });
+});
+
+
+router.get("/clients/:constructorId/:token", (req, res) => {
+  const { constructorId, token } = req.params;
+
+  if (!constructorId || !token) {
+    return res.json({ message: "constructorId et token sont requis." });
+  }
+
+  // Vérification du constructeur avec le token
+  Constructor.findOne({ _id: constructorId, token: token })
+    .then((constructor) => {
+      if (!constructor) {
+        return res.json({
+          result: false,
+          error: "Constructeur non trouvé ou token invalide.",
+        });
+      }
+
+      // Recherche des projets associés au constructeur validé
+      Project.find({ constructeur: constructorId })
+        .populate("client")
+        .then((data) => {
+          if (data && data.length > 0) {
+            res.json({ result: true, data: data });
+          } else {
+            res.json({
+              result: false,
+              error: "Aucun client trouvé pour ce constructeur.",
+            });
+          }
+        });
+    })
+    .catch((err) => {
+      res.json({ result: false, error: "Une erreur est survenue." });
+    });
+});
+
+router.get("/chantier/:clientId/:token", (req, res) => {
+  const { clientId, token } = req.params;
+
+  if (!clientId || !token) {
+    return res.json({ message: "clientId et token sont requis." });
+  }
+
+  // Vérification si le client existe avec le bon token
+  Client.findOne({ _id: clientId, token: token })
+    .then((client) => {
+      if (!client) {
+        return res.json({
+          result: false,
+          error: "Client introuvable ou token invalide.",
+        });
+      }
+
+      // Recherche du projet correspondant au client
+      Project.findOne({ client: clientId })
+        .populate("client")
+        .populate("constructeur")
+        .then((data) => {
+          if (data) {
+            res.json({ result: true, data: data });
+          } else {
+            res.json({
+              result: false,
+              error: "Projet non trouvé pour ce client.",
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Erreur lors de la recherche du projet :", err);
+          res.json({
+            result: false,
+            error: "Erreur interne lors de la recherche du projet.",
+          });
+        });
+    })
+    .catch((err) => {
+      console.error("Erreur lors de la vérification du client :", err);
+      res.json({
+        result: false,
+        error: "Erreur interne lors de la vérification du client.",
       });
     });
 });
@@ -331,20 +348,51 @@ router.patch("/updateStep/:projectId/:stepId", (req, res) => {
       res.json({ result: false, error: "Failed to find project" });
     });
 });
-router.get("/:constructorId", (req, res) => {
-  const { constructorId } = req.params;
 
-  if (!constructorId) {
-    return res.json({ message: "constructorId est requis." });
+router.get("/:constructorId/:token", (req, res) => {
+  const { constructorId, token } = req.params;
+
+  if (!constructorId || !token) {
+    return res.json({ message: "constructorId et token sont requis." });
   }
 
-  Project.find({ constructeur: constructorId }).then((data) => {
-    if (data) {
-      res.json({ result: true, data: data });
-    } else {
-      res.json({ result: false, error: "Project not found !" });
-    }
-  });
+  // Vérification si le constructeur existe avec le bon token
+  Constructor.findOne({ _id: constructorId, token: token })
+    .then((constructor) => {
+      if (!constructor) {
+        return res.json({
+          result: false,
+          error: "Constructeur introuvable ou token invalide.",
+        });
+      }
+
+      // Recherche des projets associés au constructeur
+      Project.find({ constructeur: constructorId })
+        .then((data) => {
+          if (data.length > 0) {
+            res.json({ result: true, data: data });
+          } else {
+            res.json({
+              result: false,
+              error: "Aucun projet trouvé pour ce constructeur.",
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Erreur lors de la recherche des projets :", err);
+          res.json({
+            result: false,
+            error: "Erreur interne lors de la recherche des projets.",
+          });
+        });
+    })
+    .catch((err) => {
+      console.error("Erreur lors de la vérification du constructeur :", err);
+      res.json({
+        result: false,
+        error: "Erreur interne lors de la vérification du constructeur.",
+      });
+    });
 });
 
 router.delete("/:projectId", (req, res) => {
