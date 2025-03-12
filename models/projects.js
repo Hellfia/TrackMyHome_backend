@@ -11,15 +11,6 @@ const commentSchema = new mongoose.Schema({
   content: String,
 });
 
-const messageSchema = new mongoose.Schema({
-  timeStamps: Date,
-  content: String,
-});
-
-const conversationSchema = new mongoose.Schema({
-  messages: [messageSchema],
-});
-
 const stepSchema = new mongoose.Schema({
   name: String,
   date: Date,
@@ -44,7 +35,6 @@ const projectSchema = new mongoose.Schema({
       ref: "craftsmen",
     },
   ],
-  conversation: conversationSchema,
   steps: [stepSchema],
   documents: [documentSchema],
   comments: [commentSchema],
