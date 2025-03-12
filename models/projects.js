@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const documentSchema = new mongoose.Schema({
   name: String,
   date: Date,
-  uri: String, // uri de cloudinary
+  uri: String,
 });
 
 const commentSchema = new mongoose.Schema({
@@ -16,7 +16,7 @@ const stepSchema = new mongoose.Schema({
   date: Date,
   dateEnd: Date,
   status: String,
-  uri: String, // uri de cloudinary
+  uri: String,
   content: String,
 });
 
