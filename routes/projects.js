@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const uid2 = require("uid2");
-
+const r2 = require("../modules/r2config");
 const Project = require("../models/projects");
 const Client = require("../models/clients");
 const Constructor = require("../models/constructors");
@@ -257,37 +257,35 @@ router.get("/craftsmen/:constructorId", (req, res) => {
     });
 });
 
-router.post("/upload", (req, res) => {
-  if (!req.body.file) {
-    return res.status(400).json({ result: false, error: "No file uploaded" });
-  }
-  if (!req.body.projectId) {
-    console.log("req.body.if", req.body);
-    return res
-      .status(400)
-      .json({ result: false, error: "Project ID is required" });
-  }
+router.post("/upload/:projectId", (req, res) => {
+  const file = req.files.file;
+  const name = file.name + uid2(16);
+  const params = {
+    Bucket: process.env.R2_BUCKET_DOCUMENTS,
+    Key: name,
+    Body: file.data,
+    ContentType: file.mimetype,
+  };
+  r2.upload(params)
+    .promise()
+    .then(() => {
+      const imageUrl = `${process.env.R2_PUBLIC_URL}/${file.name}`;
 
-  const projectId = req.body.projectId;
-  const document = req.body.file;
-
-  Project.findByIdAndUpdate(
-    projectId,
-    { $push: { documents: document } },
-    { new: true }
-  )
-    .then((updatedProject) => {
-      res.json({
-        result: true,
-        documents: updatedProject.documents,
-        project: updatedProject,
+      Project.findByIdAndUpdate(
+        req.params.projectId,
+        {
+          $push: {
+            documents: { uri: imageUrl, date: Date.now(), name: file.name },
+          },
+        },
+        { new: true }
+      ).then((updatedDocument) => {
+        res.json({
+          result: true,
+          documents: updatedDocument.documents,
+          project: updatedDocument,
+        });
       });
-    })
-    .catch((updateError) => {
-      console.error("Error updating project:", updateError);
-      res
-        .status(500)
-        .json({ result: false, error: "Failed to update project" });
     });
 });
 
