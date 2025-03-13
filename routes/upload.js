@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const r2 = require("../modules/r2config");
 const Project = require("../models/projects");
+const Constructor = require("../models/constructors");
+const Client = require("../models/clients");
 require("../models/connection");
 
 router.post("/:projectId", (req, res) => {
@@ -167,6 +169,95 @@ router.post("/picture/:clientIdProps/:stepId", (req, res) => {
           res.status(500).json({
             result: false,
             error: "Erreur lors de la récupération du projet",
+          });
+        });
+    })
+    .catch((error) => {
+      console.error("Erreur lors de l'upload vers Cloudflare :", error);
+      res.status(500).json({
+        result: false,
+        error: "Erreur lors de l'upload du fichier",
+      });
+    });
+});
+
+router.post("/profil/:token", (req, res) => {
+  const file = req.files.file; // Récupération du fichier
+  const { token } = req.params;
+
+  if (!file) {
+    res.status(400).json({ result: false, error: "Aucun fichier fourni" });
+    return;
+  }
+
+  const name = file.name;
+  const params = {
+    Bucket: process.env.R2_BUCKET_DOCUMENTS,
+    Key: name,
+    Body: file.data,
+    ContentType: file.mimetype,
+  };
+
+  // Envoi du fichier vers Cloudflare R2
+  r2.upload(params)
+    .promise()
+    .then(() => {
+      const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
+
+      // Recherche dans la collection `constructors` et mise à jour
+      Constructor.findOneAndUpdate(
+        { token: token },
+        { profilePicture: imageUrl },
+        { new: true }
+      )
+        .then((constructor) => {
+          if (constructor) {
+            res.json({
+              result: true,
+              message: "Photo de profil mise à jour pour le constructeur",
+              profilePicture: imageUrl,
+              constructor,
+            });
+            return;
+          }
+
+          // Si pas trouvé dans `constructors`, recherche dans `clients`
+          Client.findOneAndUpdate(
+            { token: token },
+            { profilePicture: imageUrl },
+            { new: true }
+          )
+            .then((client) => {
+              if (client) {
+                res.json({
+                  result: true,
+                  message: "Photo de profil mise à jour pour le client",
+                  profilePicture: imageUrl,
+                  client,
+                });
+              } else {
+                res.status(404).json({
+                  result: false,
+                  error: "Utilisateur introuvable avec ce token",
+                });
+              }
+            })
+            .catch((error) => {
+              console.error("Erreur lors de la mise à jour du client :", error);
+              res.status(500).json({
+                result: false,
+                error: "Erreur serveur lors de la mise à jour du client",
+              });
+            });
+        })
+        .catch((error) => {
+          console.error(
+            "Erreur lors de la mise à jour du constructeur :",
+            error
+          );
+          res.status(500).json({
+            result: false,
+            error: "Erreur serveur lors de la mise à jour du constructeur",
           });
         });
     })
