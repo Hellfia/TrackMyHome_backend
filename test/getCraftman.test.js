@@ -1,58 +1,70 @@
-// On évite la connexion réelle à la base de données en mockant le module de connexion
-jest.mock("../models/connection", () => ({}));
-// On mocke le modèle Project pour simuler les appels à la BDD
-jest.mock("../models/projects");
-
 const request = require("supertest");
 const express = require("express");
 
-const Project = require("../models/projects");
-// Supposons que la route soit définie dans le routeur du module projects
-const projectRouter = require("../routes/projects");
+const craftsmenRouter = require("../routes/craftsmen");
+const Constructor = require("../models/constructors");
+
+jest.mock("../models/connection", () => ({}));
+jest.mock("../models/constructors");
 
 const app = express();
 app.use(express.json());
-app.use("/", projectRouter);
+app.use("/craftsmen", craftsmenRouter);
 
-describe("GET /craftsmen/:constructorId", () => {
+describe("GET /craftsmen/:token", () => {
   afterEach(() => {
     jest.resetAllMocks();
   });
 
-  it("devrait retourner les données quand un constructorId valide est fourni et que des données existent", async () => {
-    const constructorId = "12345";
-    const fakeData = [
-      { Craftsmen: [{ name: "Craftsman1" }], _id: "projectId1" },
+  it("doit retourner les artisans quand un token valide est fourni et que des artisans existent", async () => {
+    const token = "validtoken";
+    const mockCraftsmen = [
+      { craftsmanName: "Craftsman1" },
+      { craftsmanName: "Craftsman2" },
     ];
 
-    // Simuler la chaîne find().populate() pour renvoyer fakeData
-    Project.find.mockReturnValue({
-      populate: jest.fn().mockResolvedValue(fakeData),
+    Constructor.findOne.mockReturnValue({
+      populate: jest.fn().mockResolvedValue({ craftsmen: mockCraftsmen }),
     });
 
-    const res = await request(app).get(`/craftsmen/${constructorId}`);
+    const res = await request(app).get(`/craftsmen/${token}`);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({
       result: true,
-      data: fakeData,
+      data: mockCraftsmen,
     });
   });
 
-  it("devrait retourner une erreur quand aucune donnée n'est trouvée pour le constructorId fourni", async () => {
-    const constructorId = "12345";
+  it("doit retourner une erreur 404 quand aucun constructeur n'est trouvé avec le token", async () => {
+    const token = "invalidtoken";
 
-    // Simuler find().populate() qui renvoie null
-    Project.find.mockReturnValue({
+    Constructor.findOne.mockReturnValue({
       populate: jest.fn().mockResolvedValue(null),
     });
 
-    const res = await request(app).get(`/craftsmen/${constructorId}`);
+    const res = await request(app).get(`/craftsmen/${token}`);
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({
+      result: false,
+      error: "Craftsman not found",
+    });
+  });
+
+  it("doit retourner une liste vide si aucun artisan n'est associé au constructeur", async () => {
+    const token = "validtoken";
+
+    Constructor.findOne.mockReturnValue({
+      populate: jest.fn().mockResolvedValue({ craftsmen: [] }),
+    });
+
+    const res = await request(app).get(`/craftsmen/${token}`);
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({
-      result: false,
-      error: "Craftsman not found !",
+      result: true,
+      data: [],
     });
   });
 });
