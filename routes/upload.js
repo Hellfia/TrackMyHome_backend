@@ -3,6 +3,7 @@ const router = express.Router();
 const r2 = require("../modules/r2config");
 const Project = require("../models/projects");
 const Constructor = require("../models/constructors");
+const Craftsman = require("../models/craftsmen");
 const Client = require("../models/clients");
 require("../models/connection");
 
@@ -258,6 +259,68 @@ router.post("/profil/:token", (req, res) => {
           res.status(500).json({
             result: false,
             error: "Erreur serveur lors de la mise à jour du constructeur",
+          });
+        });
+    })
+    .catch((error) => {
+      console.error("Erreur lors de l'upload vers Cloudflare :", error);
+      res.status(500).json({
+        result: false,
+        error: "Erreur lors de l'upload du fichier",
+      });
+    });
+});
+
+router.post("/logo/:phoneNumber", (req, res) => {
+  const file = req.files?.file; // Récupération du fichier envoyé
+  const { phoneNumber } = req.params;
+
+  if (!file) {
+    res.status(400).json({ result: false, error: "Aucun fichier fourni" });
+    return;
+  }
+
+  const fileName = file.name;
+  const params = {
+    Bucket: process.env.R2_BUCKET_DOCUMENTS, // Utilisez votre bucket défini dans .env
+    Key: fileName, // Nom du fichier
+    Body: file.data, // Données du fichier
+    ContentType: file.mimetype, // Type MIME du fichier
+  };
+
+  // Envoi à Cloudflare R2
+  r2.upload(params)
+    .promise()
+    .then(() => {
+      const imageUrl = `${process.env.R2_PUBLIC_URL}/${fileName}`; // URL publique après upload
+
+      // Recherche de l'artisan par son nom
+      Craftsman.findOne({ phoneNumber })
+        .then((craftsman) => {
+          if (!craftsman) {
+            res
+              .status(404)
+              .json({ result: false, error: "Craftsman introuvable" });
+            return Promise.reject("Craftsman introuvable");
+          }
+
+          // Mise à jour de l'URL du logo
+          craftsman.craftsmanLogo = imageUrl;
+
+          // Sauvegarde du craftsman avec l'URL du logo
+          return craftsman.save();
+        })
+        .then((updatedCraftsman) => {
+          res.json({
+            result: true,
+            craftsman: updatedCraftsman,
+          });
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la mise à jour du craftsman :", error);
+          res.status(500).json({
+            result: false,
+            error: "Erreur lors de la mise à jour du craftsman",
           });
         });
     })
