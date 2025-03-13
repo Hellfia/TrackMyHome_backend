@@ -17,7 +17,7 @@ const constructeurSchema = new mongoose.Schema({
     unique: true,
   },
   phoneNumber: String,
-  zipCode: Number,
+  zipCode: String,
   address: String,
   city: String,
   role: String,
