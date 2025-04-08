@@ -6,11 +6,6 @@ const documentSchema = new mongoose.Schema({
   uri: String,
 });
 
-const commentSchema = new mongoose.Schema({
-  date: Date,
-  content: String,
-});
-
 const stepSchema = new mongoose.Schema({
   name: String,
   date: Date,
@@ -18,6 +13,15 @@ const stepSchema = new mongoose.Schema({
   status: String,
   uri: String,
   content: String,
+});
+
+const messageSchema = new mongoose.Schema({
+  sender: String,
+  content: String,
+  date: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 const projectSchema = new mongoose.Schema({
@@ -37,7 +41,7 @@ const projectSchema = new mongoose.Schema({
   ],
   steps: [stepSchema],
   documents: [documentSchema],
-  comments: [commentSchema],
+  messages: [messageSchema],
 });
 
 const Project = mongoose.model("projects", projectSchema);

@@ -79,6 +79,7 @@ router.post("/", (req, res) => {
                     client: clientData._id,
                     constructeur: constructeur._id,
                     craftsmen: [],
+                    messages: [],
                     steps: [
                       {
                         name: "Études préliminaires",
@@ -170,7 +171,6 @@ router.post("/", (req, res) => {
                       },
                     ],
                     documents: [],
-                    comments: [],
                   });
 
                   newProject.save().then((projectData) => {
@@ -220,7 +220,6 @@ router.post("/", (req, res) => {
       });
     });
 });
-
 
 router.get("/clients/:constructorId/:token", (req, res) => {
   const { constructorId, token } = req.params;
