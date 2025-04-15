@@ -5,12 +5,10 @@ const Constructor = require("../models/constructors");
 const Client = require("../models/clients");
 const Project = require("../models/projects");
 const bcrypt = require("bcrypt");
-const mongoose = require("mongoose");
 
 router.post("/signin", (req, res) => {
   if (!checkBody(req.body, ["email", "password"])) {
-    res.json({ result: false, error: "Missing or empty fields" });
-    return;
+    return res.json({ result: false, error: "Missing or empty fields" });
   }
 
   // Vérification dans la collection Client
@@ -27,21 +25,29 @@ router.post("/signin", (req, res) => {
             clientId: clientData._id,
             projectId: project._id,
             token: clientData.token,
+            firstname: clientData.firstname, // Assurez-vous que ce champ existe dans votre BDD
+            lastname: clientData.lastname,
             role: "client",
           });
         });
       } else {
-        // Si pas trouvé dans Client, vérifie dans Constructor
+        // Si non trouvé dans Client, vérifier dans Constructor
         Constructor.findOne({ email: req.body.email }).then(
           (constructorData) => {
             if (
               constructorData &&
               bcrypt.compareSync(req.body.password, constructorData.password)
             ) {
+              console.log("Constructor token:", constructorData.token); // Debugging log
+              console.log(
+                "Constructor token before response:",
+                constructorData.token
+              ); // Debugging log
               res.json({
                 result: true,
                 constructorId: constructorData._id,
                 token: constructorData.token,
+                constructorName: constructorData.constructorName,
                 role: "constructeur",
               });
             } else {
@@ -55,6 +61,7 @@ router.post("/signin", (req, res) => {
       }
     })
     .catch((err) => {
+      console.error("Erreur signin:", err);
       res.json({ result: false, error: "Internal server error" });
     });
 });
