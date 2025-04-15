@@ -156,13 +156,22 @@ router.post("/signup", (req, res) => {
 });
 
 router.get("/:token", (req, res) => {
-  Constructor.findOne({ token: req.params.token }).then((constructor) => {
-    if (constructor) {
-      res.json({ result: true, constructor });
-    } else {
-      res.status(404).json({ result: false, error: "Constructor not found" });
-    }
-  });
+  console.log("Received token:", req.params.token); // Debugging log
+
+  Constructor.findOne({ token: req.params.token })
+    .then((constructor) => {
+      if (!constructor) {
+        console.log("Constructor not found for token:", req.params.token); // Debugging log
+        return res.json({ result: false, error: "Invalid token." });
+      }
+
+      console.log("Constructor found:", constructor); // Debugging log
+      res.json({ result: true, data: constructor });
+    })
+    .catch((error) => {
+      console.error("Error fetching constructor:", error); // Debugging log
+      res.json({ result: false, error: "An error occurred." });
+    });
 });
 
 module.exports = router;

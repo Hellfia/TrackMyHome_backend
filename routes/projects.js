@@ -224,7 +224,11 @@ router.post("/", (req, res) => {
 router.get("/clients/:constructorId/:token", (req, res) => {
   const { constructorId, token } = req.params;
 
+  console.log("Received constructorId:", constructorId); // Debugging log
+  console.log("Received token:", token); // Debugging log
+
   if (!constructorId || !token) {
+    console.log("Missing constructorId or token"); // Debugging log
     return res.json({ message: "constructorId et token sont requis." });
   }
 
@@ -232,6 +236,7 @@ router.get("/clients/:constructorId/:token", (req, res) => {
   Constructor.findOne({ _id: constructorId, token: token })
     .then((constructor) => {
       if (!constructor) {
+        console.log("Constructor not found or invalid token"); // Debugging log
         return res.json({
           result: false,
           error: "Constructeur non trouvé ou token invalide.",
@@ -242,6 +247,7 @@ router.get("/clients/:constructorId/:token", (req, res) => {
       Project.find({ constructeur: constructorId })
         .populate("client")
         .then((data) => {
+          console.log("Projects found:", data); // Debugging log
           if (data && data.length > 0) {
             res.json({ result: true, data: data });
           } else {
@@ -253,6 +259,7 @@ router.get("/clients/:constructorId/:token", (req, res) => {
         });
     })
     .catch((err) => {
+      console.error("Error finding constructor:", err); // Debugging log
       res.json({ result: false, error: "Une erreur est survenue." });
     });
 });
@@ -351,7 +358,10 @@ router.patch("/updateStep/:projectId/:stepId", (req, res) => {
 router.get("/:constructorId/:token", (req, res) => {
   const { constructorId, token } = req.params;
 
+  console.log("Received request for projects:", { constructorId, token }); // Log the received parameters
+
   if (!constructorId || !token) {
+    console.log("Missing constructorId or token"); // Log missing parameters
     return res.json({ message: "constructorId et token sont requis." });
   }
 
@@ -359,18 +369,23 @@ router.get("/:constructorId/:token", (req, res) => {
   Constructor.findOne({ _id: constructorId, token: token })
     .then((constructor) => {
       if (!constructor) {
+        console.log("Constructor not found or invalid token"); // Log if constructor is not found
         return res.json({
           result: false,
           error: "Constructeur introuvable ou token invalide.",
         });
       }
 
+      console.log("Constructor found:", constructor); // Log the found constructor
+
       // Recherche des projets associés au constructeur
       Project.find({ constructeur: constructorId })
         .then((data) => {
           if (data.length > 0) {
+            console.log("Projects found:", data); // Log the found projects
             res.json({ result: true, data: data });
           } else {
+            console.log("No projects found for constructor"); // Log if no projects are found
             res.json({
               result: false,
               error: "Aucun projet trouvé pour ce constructeur.",
@@ -449,6 +464,30 @@ router.delete("/:projectId", (req, res) => {
     .catch((error) => {
       console.error("Error fetching project:", error);
       res.json({ result: false, error: "Error fetching project" });
+    });
+});
+
+router.get("/:constructorId", (req, res) => {
+  const { constructorId } = req.params;
+
+  if (!constructorId) {
+    return res.status(400).json({ error: "Constructor ID is required" });
+  }
+
+  Project.find({ constructeur: constructorId })
+    .populate("client")
+    .then((projects) => {
+      if (!projects || projects.length === 0) {
+        return res
+          .status(404)
+          .json({ error: "No projects found for this constructor" });
+      }
+
+      res.json({ result: true, data: projects });
+    })
+    .catch((error) => {
+      console.error("Error fetching projects:", error);
+      res.status(500).json({ error: "Internal server error" });
     });
 });
 

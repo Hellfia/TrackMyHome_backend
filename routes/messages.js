@@ -10,6 +10,9 @@ router.post("/:projectId", (req, res) => {
     return res.status(400).json({ error: "Champs manquants" });
   }
 
+  console.log("Message sender:", sender); // Debugging log
+  console.log("Message content:", content); // Debugging log
+
   Project.findByIdAndUpdate(projectId, {
     $push: {
       messages: {
