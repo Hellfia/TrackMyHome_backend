@@ -15,15 +15,6 @@ const stepSchema = new mongoose.Schema({
   content: String,
 });
 
-const messageSchema = new mongoose.Schema({
-  sender: String,
-  content: String,
-  date: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
 const projectSchema = new mongoose.Schema({
   client: {
     type: mongoose.Schema.Types.ObjectId,
@@ -41,7 +32,6 @@ const projectSchema = new mongoose.Schema({
   ],
   steps: [stepSchema],
   documents: [documentSchema],
-  messages: [messageSchema],
 });
 
 const Project = mongoose.model("projects", projectSchema);

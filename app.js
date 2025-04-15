@@ -13,7 +13,6 @@ const projectsRouter = require("./routes/projects");
 const craftsmenRouter = require("./routes/craftsmen");
 const constructorsRouter = require("./routes/constructors");
 const uploadRouter = require("./routes/upload");
-const messagesRouter = require("./routes/messages");
 
 const app = express();
 
@@ -33,6 +32,5 @@ app.use("/projects", projectsRouter);
 app.use("/craftsmen", craftsmenRouter);
 app.use("/constructors", constructorsRouter);
 app.use("/upload", uploadRouter);
-app.use("/messages", messagesRouter);
 
 module.exports = app;
