@@ -27,6 +27,7 @@ router.post("/signin", (req, res) => {
             token: clientData.token,
             firstname: clientData.firstname, // Assurez-vous que ce champ existe dans votre BDD
             lastname: clientData.lastname,
+            profilPicture: clientData.profilePicture,
             role: "client",
           });
         });
@@ -48,6 +49,7 @@ router.post("/signin", (req, res) => {
                 constructorId: constructorData._id,
                 token: constructorData.token,
                 constructorName: constructorData.constructorName,
+                profilPicture: constructorData.profilePicture,
                 role: "constructeur",
               });
             } else {
