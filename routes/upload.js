@@ -1,336 +1,253 @@
 const express = require("express");
 const router = express.Router();
+const bcrypt = require("bcrypt");
+const uid2 = require("uid2");
+const fetch = require("node-fetch");
 const r2 = require("../modules/r2config");
 const Project = require("../models/projects");
+const Client = require("../models/clients");
 const Constructor = require("../models/constructors");
 const Craftsman = require("../models/craftsmen");
-const Client = require("../models/clients");
-require("../models/connection");
+const { checkBody } = require("../modules/checkBody");
 
-router.post("/:projectId", (req, res) => {
-  const file = req.files.file;
-  const name = file.name;
-  const params = {
-    Bucket: process.env.R2_BUCKET_DOCUMENTS,
-    Key: name,
-    Body: file.data,
-    ContentType: file.mimetype,
-  };
-  r2.upload(params)
-    .promise()
-    .then(() => {
-      const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
+const OPENCAGE_API_KEY = process.env.OPEN_CAGE_API;
 
-      Project.findByIdAndUpdate(
-        req.params.projectId,
-        {
-          $push: {
-            documents: { uri: imageUrl, date: Date.now(), name: file.name },
-          },
+// POST /:projectId - Upload d'un document dans un projet
+router.post("/:projectId", async (req, res) => {
+  try {
+    const file = req.files?.file;
+    if (!file)
+      return res
+        .status(400)
+        .json({ result: false, error: "Aucun fichier fourni" });
+
+    const name = file.name;
+    const params = {
+      Bucket: process.env.R2_BUCKET_DOCUMENTS,
+      Key: name,
+      Body: file.data,
+      ContentType: file.mimetype,
+    };
+
+    await r2.upload(params).promise();
+    const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
+
+    const updatedDocument = await Project.findByIdAndUpdate(
+      req.params.projectId,
+      {
+        $push: {
+          documents: { uri: imageUrl, date: Date.now(), name: file.name },
         },
-        { new: true }
-      ).then((updatedDocument) => {
-        res.json({
+      },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      result: true,
+      documents: updatedDocument.documents,
+      project: updatedDocument,
+    });
+  } catch (error) {
+    console.error("Erreur lors de l'upload de document:", error);
+    return res.status(500).json({ result: false, error: "Erreur serveur" });
+  }
+});
+
+// GET /documents/:projectId - Récupérer les documents d’un projet
+router.get("/documents/:projectId", async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.projectId);
+    if (!project) {
+      return res
+        .status(404)
+        .json({ result: false, message: "Projet introuvable." });
+    }
+    return res.status(200).json({ result: true, documents: project.documents });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des documents:", error);
+    return res.status(500).json({ result: false, message: "Erreur serveur." });
+  }
+});
+
+// DELETE /documents/:projectId/:documentId - Supprimer un document d’un projet
+router.delete("/documents/:projectId/:documentId", async (req, res) => {
+  try {
+    const { projectId, documentId } = req.params;
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res
+        .status(404)
+        .json({ result: false, message: "Projet introuvable." });
+    }
+
+    const updatedDocuments = project.documents.filter(
+      (doc) => doc._id.toString() !== documentId
+    );
+
+    if (updatedDocuments.length === project.documents.length) {
+      return res
+        .status(404)
+        .json({ result: false, message: "Document introuvable." });
+    }
+
+    project.documents = updatedDocuments;
+    const updatedProject = await project.save();
+
+    return res.status(200).json({
+      result: true,
+      message: "Document supprimé avec succès.",
+      documents: updatedProject.documents,
+    });
+  } catch (error) {
+    console.error("Erreur lors de la suppression du document:", error);
+    return res.status(500).json({ result: false, message: "Erreur serveur." });
+  }
+});
+
+// POST /picture/:clientIdProps/:stepId - Upload image pour une étape d’un projet
+router.post("/picture/:clientIdProps/:stepId", async (req, res) => {
+  try {
+    const file = req.files?.file;
+    const { clientIdProps, stepId } = req.params;
+
+    if (!file)
+      return res
+        .status(400)
+        .json({ result: false, error: "Aucun fichier fourni" });
+
+    const name = file.name;
+    const params = {
+      Bucket: process.env.R2_BUCKET_DOCUMENTS,
+      Key: name,
+      Body: file.data,
+      ContentType: file.mimetype,
+    };
+
+    await r2.upload(params).promise();
+    const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
+
+    const project = await Project.findOne({ client: clientIdProps });
+    if (!project)
+      return res
+        .status(404)
+        .json({ result: false, error: "Projet introuvable" });
+
+    const step = project.steps.find((step) => step._id.toString() === stepId);
+    if (!step)
+      return res.status(404).json({ result: false, error: "Step introuvable" });
+
+    step.uri = imageUrl;
+    const updatedProject = await project.save();
+
+    return res
+      .status(200)
+      .json({ result: true, step, project: updatedProject });
+  } catch (error) {
+    console.error("Erreur lors de l'upload de l'image de step:", error);
+    return res.status(500).json({ result: false, error: "Erreur serveur" });
+  }
+});
+
+// POST /profil/:token - Upload d'une photo de profil
+router.post("/profil/:token", async (req, res) => {
+  try {
+    const file = req.files?.file;
+    const { token } = req.params;
+    if (!file)
+      return res
+        .status(400)
+        .json({ result: false, error: "Aucun fichier fourni" });
+
+    const name = file.name;
+    const params = {
+      Bucket: process.env.R2_BUCKET_DOCUMENTS,
+      Key: name,
+      Body: file.data,
+      ContentType: file.mimetype,
+    };
+
+    await r2.upload(params).promise();
+    const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
+
+    const constructor = await Constructor.findOneAndUpdate(
+      { token },
+      { profilePicture: imageUrl },
+      { new: true }
+    );
+
+    if (constructor) {
+      return res
+        .status(200)
+        .json({
           result: true,
-          documents: updatedDocument.documents,
-          project: updatedDocument,
+          message: "Photo de profil mise à jour pour le constructeur",
+          profilePicture: imageUrl,
+          constructor,
         });
-      });
-    });
-});
+    }
 
-router.get("/documents/:projectId", (req, res) => {
-  const { projectId } = req.params;
+    const client = await Client.findOneAndUpdate(
+      { token },
+      { profilePicture: imageUrl },
+      { new: true }
+    );
 
-  Project.findById(projectId)
-    .then((project) => {
-      if (!project) {
-        return res
-          .status(404)
-          .json({ result: false, message: "Projet introuvable." });
-      }
-      res.json({
-        result: true,
-        documents: project.documents,
-      });
-    })
-    .catch((error) => {
-      res
-        .status(500)
-        .json({ result: false, message: "Erreur serveur.", error });
-    });
-});
-
-router.delete("/documents/:projectId/:documentId", (req, res) => {
-  const { projectId, documentId } = req.params;
-
-  Project.findById(projectId)
-    .then((project) => {
-      if (!project) {
-        return res
-          .status(404)
-          .json({ result: false, message: "Projet introuvable." });
-      }
-
-      // Filtrer pour exclure le document à supprimer
-      const updatedDocuments = project.documents.filter(
-        (doc) => doc._id.toString() !== documentId
-      );
-
-      if (updatedDocuments.length === project.documents.length) {
-        return res
-          .status(404)
-          .json({ result: false, message: "Document introuvable." });
-      }
-
-      // Mettre à jour le projet avec les documents restants
-      project.documents = updatedDocuments;
-
-      project.save().then((updatedProject) => {
-        res.json({
+    if (client) {
+      return res
+        .status(200)
+        .json({
           result: true,
-          message: "Document supprimé avec succès.",
-          documents: updatedProject.documents,
+          message: "Photo de profil mise à jour pour le client",
+          profilePicture: imageUrl,
+          client,
         });
-      });
-    })
-    .catch((error) => {
-      res
-        .status(500)
-        .json({ result: false, message: "Erreur serveur.", error });
-    });
+    }
+
+    return res
+      .status(404)
+      .json({ result: false, error: "Utilisateur introuvable avec ce token" });
+  } catch (error) {
+    console.error("Erreur lors de l'upload du profil:", error);
+    return res.status(500).json({ result: false, error: "Erreur serveur" });
+  }
 });
 
-router.post("/picture/:clientIdProps/:stepId", (req, res) => {
-  const file = req.files.file;
-  const { stepId } = req.params;
+// POST /logo/:phoneNumber - Upload d’un logo artisan
+router.post("/logo/:phoneNumber", async (req, res) => {
+  try {
+    const file = req.files?.file;
+    const { phoneNumber } = req.params;
+    if (!file)
+      return res
+        .status(400)
+        .json({ result: false, error: "Aucun fichier fourni" });
 
-  if (!file) {
-    res.status(400).json({ result: false, error: "Aucun fichier fourni" });
-    return;
+    const name = file.name;
+    const params = {
+      Bucket: process.env.R2_BUCKET_DOCUMENTS,
+      Key: name,
+      Body: file.data,
+      ContentType: file.mimetype,
+    };
+
+    await r2.upload(params).promise();
+    const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
+
+    const craftsman = await Craftsman.findOne({ phoneNumber });
+    if (!craftsman)
+      return res
+        .status(404)
+        .json({ result: false, error: "Craftsman introuvable" });
+
+    craftsman.craftsmanLogo = imageUrl;
+    const updatedCraftsman = await craftsman.save();
+
+    return res.status(200).json({ result: true, craftsman: updatedCraftsman });
+  } catch (error) {
+    console.error("Erreur lors de l'upload du logo artisan:", error);
+    return res.status(500).json({ result: false, error: "Erreur serveur" });
   }
-
-  const name = file.name;
-  const params = {
-    Bucket: process.env.R2_BUCKET_DOCUMENTS,
-    Key: name,
-    Body: file.data,
-    ContentType: file.mimetype,
-  };
-
-  // Envoi à Cloudflare
-  r2.upload(params)
-    .promise()
-    .then(() => {
-      const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
-
-      // Recherche du cl et mise à jour de la step ciblée
-      Project.findOne({ client: req.params.clientIdProps })
-        .then((project) => {
-          if (!project) {
-            res
-              .status(404)
-              .json({ result: false, error: "Projet introuvable" });
-            return;
-          }
-
-          // Recherche de la step par ID
-          const step = project.steps.find(
-            (step) => step._id.toString() === stepId
-          );
-
-          if (!step) {
-            res.status(404).json({ result: false, error: "Step introuvable" });
-            return;
-          }
-
-          // Mise à jour de l'URI dans la step
-          step.uri = imageUrl;
-
-          // Sauvegarde du projet avec la mise à jour
-          project
-            .save()
-            .then((updatedProject) => {
-              res.json({
-                result: true,
-                step: step,
-                project: updatedProject,
-              });
-            })
-            .catch((error) => {
-              console.error("Erreur lors de la sauvegarde du projet :", error);
-              res.status(500).json({
-                result: false,
-                error: "Erreur lors de la mise à jour de la step",
-              });
-            });
-        })
-        .catch((error) => {
-          console.error("Erreur lors de la recherche du projet :", error);
-          res.status(500).json({
-            result: false,
-            error: "Erreur lors de la récupération du projet",
-          });
-        });
-    })
-    .catch((error) => {
-      console.error("Erreur lors de l'upload vers Cloudflare :", error);
-      res.status(500).json({
-        result: false,
-        error: "Erreur lors de l'upload du fichier",
-      });
-    });
-});
-
-router.post("/profil/:token", (req, res) => {
-  const file = req.files.file; // Récupération du fichier
-  const { token } = req.params;
-
-  if (!file) {
-    res.status(400).json({ result: false, error: "Aucun fichier fourni" });
-    return;
-  }
-
-  const name = file.name;
-  const params = {
-    Bucket: process.env.R2_BUCKET_DOCUMENTS,
-    Key: name,
-    Body: file.data,
-    ContentType: file.mimetype,
-  };
-
-  // Envoi du fichier vers Cloudflare R2
-  r2.upload(params)
-    .promise()
-    .then(() => {
-      const imageUrl = `${process.env.R2_PUBLIC_URL}/${name}`;
-
-      // Recherche dans la collection `constructors` et mise à jour
-      Constructor.findOneAndUpdate(
-        { token: token },
-        { profilePicture: imageUrl },
-        { new: true }
-      )
-        .then((constructor) => {
-          if (constructor) {
-            res.json({
-              result: true,
-              message: "Photo de profil mise à jour pour le constructeur",
-              profilePicture: imageUrl,
-              constructor,
-            });
-            return;
-          }
-
-          // Si pas trouvé dans `constructors`, recherche dans `clients`
-          Client.findOneAndUpdate(
-            { token: token },
-            { profilePicture: imageUrl },
-            { new: true }
-          )
-            .then((client) => {
-              if (client) {
-                res.json({
-                  result: true,
-                  message: "Photo de profil mise à jour pour le client",
-                  profilePicture: imageUrl,
-                  client,
-                });
-              } else {
-                res.status(404).json({
-                  result: false,
-                  error: "Utilisateur introuvable avec ce token",
-                });
-              }
-            })
-            .catch((error) => {
-              console.error("Erreur lors de la mise à jour du client :", error);
-              res.status(500).json({
-                result: false,
-                error: "Erreur serveur lors de la mise à jour du client",
-              });
-            });
-        })
-        .catch((error) => {
-          console.error(
-            "Erreur lors de la mise à jour du constructeur :",
-            error
-          );
-          res.status(500).json({
-            result: false,
-            error: "Erreur serveur lors de la mise à jour du constructeur",
-          });
-        });
-    })
-    .catch((error) => {
-      console.error("Erreur lors de l'upload vers Cloudflare :", error);
-      res.status(500).json({
-        result: false,
-        error: "Erreur lors de l'upload du fichier",
-      });
-    });
-});
-
-router.post("/logo/:phoneNumber", (req, res) => {
-  const file = req.files?.file; // Récupération du fichier envoyé
-  const { phoneNumber } = req.params;
-
-  if (!file) {
-    res.status(400).json({ result: false, error: "Aucun fichier fourni" });
-    return;
-  }
-
-  const fileName = file.name;
-  const params = {
-    Bucket: process.env.R2_BUCKET_DOCUMENTS, // Utilisez votre bucket défini dans .env
-    Key: fileName, // Nom du fichier
-    Body: file.data, // Données du fichier
-    ContentType: file.mimetype, // Type MIME du fichier
-  };
-
-  // Envoi à Cloudflare R2
-  r2.upload(params)
-    .promise()
-    .then(() => {
-      const imageUrl = `${process.env.R2_PUBLIC_URL}/${fileName}`; // URL publique après upload
-
-      // Recherche de l'artisan par son nom
-      Craftsman.findOne({ phoneNumber })
-        .then((craftsman) => {
-          if (!craftsman) {
-            res
-              .status(404)
-              .json({ result: false, error: "Craftsman introuvable" });
-            return Promise.reject("Craftsman introuvable");
-          }
-
-          // Mise à jour de l'URL du logo
-          craftsman.craftsmanLogo = imageUrl;
-
-          // Sauvegarde du craftsman avec l'URL du logo
-          return craftsman.save();
-        })
-        .then((updatedCraftsman) => {
-          res.json({
-            result: true,
-            craftsman: updatedCraftsman,
-          });
-        })
-        .catch((error) => {
-          console.error("Erreur lors de la mise à jour du craftsman :", error);
-          res.status(500).json({
-            result: false,
-            error: "Erreur lors de la mise à jour du craftsman",
-          });
-        });
-    })
-    .catch((error) => {
-      console.error("Erreur lors de l'upload vers Cloudflare :", error);
-      res.status(500).json({
-        result: false,
-        error: "Erreur lors de l'upload du fichier",
-      });
-    });
 });
 
 module.exports = router;

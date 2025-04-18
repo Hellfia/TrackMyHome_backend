@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const Project = require("../models/projects");
 
-router.post("/:projectId", (req, res) => {
+// POST - Ajouter un message à un projet
+router.post("/:projectId", async (req, res) => {
   const { projectId } = req.params;
   const { sender, content } = req.body;
 
@@ -10,42 +11,52 @@ router.post("/:projectId", (req, res) => {
     return res.status(400).json({ error: "Champs manquants" });
   }
 
-  console.log("Message sender:", sender); // Debugging log
-  console.log("Message content:", content); // Debugging log
-
-  Project.findByIdAndUpdate(projectId, {
-    $push: {
-      messages: {
-        sender,
-        content,
+  try {
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId,
+      {
+        $push: {
+          messages: {
+            sender,
+            content,
+            timestamp: new Date(), // tu peux aussi stocker la date
+          },
+        },
       },
-    },
-  })
-    .then(() => {
-      res.json({ success: true, message: "Message ajouté au projet" });
-    })
-    .catch((err) => {
-      console.error("Erreur ajout message :", err);
-      res.status(500).json({ error: "Erreur serveur" });
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).json({ error: "Projet non trouvé" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Message ajouté au projet",
+      messages: updatedProject.messages,
     });
+  } catch (err) {
+    console.error("Erreur ajout message :", err);
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
 });
 
-router.get("/:projectId", (req, res) => {
+// GET - Récupérer les messages d’un projet
+router.get("/:projectId", async (req, res) => {
   const { projectId } = req.params;
 
-  Project.findById(projectId)
-    .select("messages")
-    .then((project) => {
-      if (!project) {
-        return res.status(404).json({ error: "Projet non trouvé" });
-      }
+  try {
+    const project = await Project.findById(projectId).select("messages");
 
-      res.json({ success: true, messages: project.messages });
-    })
-    .catch((err) => {
-      console.error("Erreur récupération des messages :", err);
-      res.status(500).json({ error: "Erreur serveur" });
-    });
+    if (!project) {
+      return res.status(404).json({ error: "Projet non trouvé" });
+    }
+
+    return res.status(200).json({ success: true, messages: project.messages });
+  } catch (err) {
+    console.error("Erreur récupération des messages :", err);
+    return res.status(500).json({ error: "Erreur serveur" });
+  }
 });
 
 module.exports = router;

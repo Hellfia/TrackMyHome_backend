@@ -4,69 +4,70 @@ require("../models/connection");
 const Client = require("../models/clients");
 const bcrypt = require("bcrypt");
 
-router.get("/", (req, res) => {
-  Client.find({}).then((clients) => {
-    res.json({ result: true, clients });
-  });
+// GET all clients
+router.get("/", async (req, res) => {
+  try {
+    const clients = await Client.find({});
+    return res.status(200).json({ result: true, clients });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
-router.get("/:token", (req, res) => {
-  Client.findOne({ token: req.params.token }).then((client) => {
-    if (client) {
-      res.json({ result: true, client });
-    } else {
-      res.status(404).json({ result: false, error: "Client not found" });
+// GET a single client by token
+router.get("/:token", async (req, res) => {
+  try {
+    const client = await Client.findOne({ token: req.params.token });
+    if (!client) {
+      return res.status(404).json({ result: false, error: "Client not found" });
     }
-  });
+    return res.status(200).json({ result: true, client });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
-router.patch("/:token", (req, res) => {
-  // Rechercher le constructeur par ID
-  Client.findOne({ token: req.params.token })
-    .then((data) => {
-      if (!data) {
-        return res.json({ result: false, error: "Client not found" });
-      }
+// PATCH update client profile by token
+router.patch("/:token", async (req, res) => {
+  try {
+    const client = await Client.findOne({ token: req.params.token });
 
-      // Mettre à jour les champs du constructeur
-      const updateFields = {};
+    if (!client) {
+      return res.status(404).json({ result: false, error: "Client not found" });
+    }
 
-      if (req.body.firstname) updateFields.firstname = req.body.firstname;
-      if (req.body.lastname) updateFields.lastname = req.body.lastname;
-      if (req.body.email) updateFields.email = req.body.email;
-      if (req.body.password) {
-        // Hacher le mot de passe avant de le mettre à jour
-        updateFields.password = bcrypt.hashSync(req.body.password, 10);
-      }
+    const updateFields = {};
 
-      // Mettre à jour les informations dans la base de données
-      Client.findOneAndUpdate({ token: req.params.token }, updateFields, {
-        new: true,
-      })
-        .then((updatedData) => {
-          if (!updatedData) {
-            return res.json({
-              result: false,
-              error: "Failed to update the profile",
-            });
-          }
+    if (req.body.firstname) updateFields.firstname = req.body.firstname;
+    if (req.body.lastname) updateFields.lastname = req.body.lastname;
+    if (req.body.email) updateFields.email = req.body.email;
+    if (req.body.password) {
+      updateFields.password = await bcrypt.hash(req.body.password, 10);
+    }
 
-          // Réponse avec le constructeur mis à jour
-          res.json({
-            result: true,
-            message: "Profile updated successfully",
-            client: updatedData,
-          });
-        })
-        .catch((err) => {
-          console.error(err);
-          res.json({ result: false, error: "Something went wrong" });
-        });
-    })
-    .catch((err) => {
-      console.error(err);
-      res.json({ result: false, error: "Client not found" });
+    const updatedClient = await Client.findOneAndUpdate(
+      { token: req.params.token },
+      updateFields,
+      { new: true }
+    );
+
+    if (!updatedClient) {
+      return res
+        .status(400)
+        .json({ result: false, error: "Failed to update profile" });
+    }
+
+    return res.status(200).json({
+      result: true,
+      message: "Profile updated successfully",
+      client: updatedClient,
     });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
 module.exports = router;

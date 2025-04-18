@@ -6,172 +6,162 @@ const bcrypt = require("bcrypt");
 require("../models/connection");
 const Constructor = require("../models/constructors");
 
-// Route PATCH pour mettre à jour les informations du constructeur
-router.patch("/:token", (req, res) => {
-  // Rechercher le constructeur par son token
-  Constructor.findOne({ token: req.params.token })
-    .then((data) => {
-      if (!data) {
-        return res.json({ result: false, error: "Constructor not found" });
-      }
+// PATCH update constructor by token
+router.patch("/:token", async (req, res) => {
+  try {
+    const constructor = await Constructor.findOne({ token: req.params.token });
 
-      // Créer un objet pour les champs modifiés
-      const updateFields = {};
+    if (!constructor) {
+      return res
+        .status(404)
+        .json({ result: false, error: "Constructor not found" });
+    }
 
-      if (
-        req.body.constructorName &&
-        req.body.constructorName !== data.constructorName
-      ) {
-        updateFields.constructorName = req.body.constructorName;
-      }
+    const updateFields = {};
 
-      if (
-        req.body.constructorSiret &&
-        req.body.constructorSiret !== data.constructorSiret
-      ) {
-        updateFields.constructorSiret = req.body.constructorSiret;
-      }
+    if (
+      req.body.constructorName &&
+      req.body.constructorName !== constructor.constructorName
+    ) {
+      updateFields.constructorName = req.body.constructorName;
+    }
+    if (
+      req.body.constructorSiret &&
+      req.body.constructorSiret !== constructor.constructorSiret
+    ) {
+      updateFields.constructorSiret = req.body.constructorSiret;
+    }
+    if (req.body.city && req.body.city !== constructor.city) {
+      updateFields.city = req.body.city;
+    }
+    if (req.body.address && req.body.address !== constructor.address) {
+      updateFields.address = req.body.address;
+    }
+    if (req.body.zipCode && req.body.zipCode !== constructor.zipCode) {
+      updateFields.zipCode = req.body.zipCode;
+    }
+    if (
+      req.body.phoneNumber &&
+      req.body.phoneNumber !== constructor.phoneNumber
+    ) {
+      updateFields.phoneNumber = req.body.phoneNumber;
+    }
+    if (req.body.email && req.body.email !== constructor.email) {
+      updateFields.email = req.body.email;
+    }
+    if (req.body.password && req.body.password !== constructor.password) {
+      updateFields.password = await bcrypt.hash(req.body.password, 10);
+    }
 
-      if (req.body.city && req.body.city !== data.city) {
-        updateFields.city = req.body.city;
-      }
-      if (req.body.address && req.body.address !== data.address) {
-        updateFields.address = req.body.address;
-      }
-      if (req.body.zipCode && req.body.zipCode !== data.zipCode) {
-        updateFields.zipCode = req.body.zipCode;
-      }
-      if (req.body.phoneNumber && req.body.phoneNumber !== data.phoneNumber) {
-        updateFields.phoneNumber = req.body.phoneNumber;
-      }
-      if (req.body.email && req.body.email !== data.email) {
-        updateFields.email = req.body.email;
-      }
-
-      if (req.body.password && req.body.password !== data.password) {
-        // Hacher le mot de passe avant de le mettre à jour
-        updateFields.password = bcrypt.hashSync(req.body.password, 10);
-      }
-
-      // Si aucun champ n'est fourni, retourner une erreur
-      if (Object.keys(updateFields).length === 0) {
-        return res.json({
-          result: false,
-          error: "No fields to update",
-        });
-      }
-
-      // Mettre à jour les informations dans la base de données
-      Constructor.findOneAndUpdate({ token: req.params.token }, updateFields, {
-        new: true,
-      })
-        .then((updatedData) => {
-          if (!updatedData) {
-            return res.json({
-              result: false,
-              error: "Failed to update the profile",
-            });
-          }
-
-          // Réponse avec le constructeur mis à jour
-          res.json({
-            result: true,
-            message: "Profile updated successfully",
-            constructor: updatedData,
-          });
-        })
-        .catch((err) => {
-          console.error(err);
-          res.json({ result: false, error: "Something went wrong" });
-        });
-    })
-    .catch((err) => {
-      console.error(err);
-      res.json({ result: false, error: "Constructor not found" });
-    });
-});
-
-router.post("/signup", (req, res) => {
-  if (
-    !checkBody(req.body, [
-      "constructorName",
-      "constructorSiret",
-      "email",
-      "password",
-      "city",
-      "zipCode",
-      "address",
-      "phoneNumber",
-    ])
-  ) {
-    res.json({ result: false, error: "Missing or empty fields" });
-    return;
-  }
-
-  Constructor.findOne({ email: req.body.email })
-    .then((dbData) => {
-      if (dbData === null) {
-        const hash = bcrypt.hashSync(req.body.password, 10);
-
-        const NewConstructor = new Constructor({
-          constructorName: req.body.constructorName,
-          constructorSiret: req.body.constructorSiret,
-          email: req.body.email,
-          password: hash,
-          phoneNumber: req.body.phoneNumber,
-          zipCode: req.body.zipCode,
-          address: req.body.address,
-          city: req.body.city,
-          clients: [],
-          profilePicture: "",
-          token: uid2(32),
-          role: "constructeur",
-        });
-
-        NewConstructor.save()
-          .then((data) => {
-            res.json({
-              result: true,
-              constructorId: data._id,
-              token: data.token,
-              role: data.role,
-            });
-          })
-          .catch((error) => {
-            res.json({
-              result: false,
-              error: "Erreur lors de l'enregistrement",
-            });
-          });
-      } else {
-        res.json({ result: false, error: "User already exists" });
-      }
-    })
-    .catch((error) => {
-      res.json({
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({
         result: false,
-        error: "Erreur lors de la recherche de l'utilisateur",
+        error: "No fields to update",
       });
+    }
+
+    const updatedConstructor = await Constructor.findOneAndUpdate(
+      { token: req.params.token },
+      updateFields,
+      { new: true }
+    );
+
+    if (!updatedConstructor) {
+      return res.status(400).json({
+        result: false,
+        error: "Failed to update the profile",
+      });
+    }
+
+    return res.status(200).json({
+      result: true,
+      message: "Profile updated successfully",
+      constructor: updatedConstructor,
     });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
-router.get("/:token", (req, res) => {
-  console.log("Received token:", req.params.token); // Debugging log
+// POST signup constructor
+router.post("/signup", async (req, res) => {
+  try {
+    if (
+      !checkBody(req.body, [
+        "constructorName",
+        "constructorSiret",
+        "email",
+        "password",
+        "city",
+        "zipCode",
+        "address",
+        "phoneNumber",
+      ])
+    ) {
+      return res
+        .status(400)
+        .json({ result: false, error: "Missing or empty fields" });
+    }
 
-  Constructor.findOne({ token: req.params.token })
-    .then((constructor) => {
-      if (!constructor) {
-        console.log("Constructor not found for token:", req.params.token); // Debugging log
-        return res.json({ result: false, error: "Invalid token." });
-      }
+    const existing = await Constructor.findOne({ email: req.body.email });
 
-      console.log("Constructor found:", constructor); // Debugging log
-      res.json({ result: true, data: constructor });
-    })
-    .catch((error) => {
-      console.error("Error fetching constructor:", error); // Debugging log
-      res.json({ result: false, error: "An error occurred." });
+    if (existing) {
+      return res
+        .status(409)
+        .json({ result: false, error: "User already exists" });
+    }
+
+    const hash = await bcrypt.hash(req.body.password, 10);
+
+    const newConstructor = new Constructor({
+      constructorName: req.body.constructorName,
+      constructorSiret: req.body.constructorSiret,
+      email: req.body.email,
+      password: hash,
+      phoneNumber: req.body.phoneNumber,
+      address: req.body.address,
+      zipCode: req.body.zipCode,
+      city: req.body.city,
+      clients: [],
+      profilePicture: "",
+      token: uid2(32),
+      role: "constructeur",
     });
+
+    const saved = await newConstructor.save();
+
+    return res.status(201).json({
+      result: true,
+      constructorId: saved._id,
+      token: saved.token,
+      role: saved.role,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      result: false,
+      error: "Server error during sign-up",
+    });
+  }
+});
+
+// GET constructor by token
+router.get("/:token", async (req, res) => {
+  try {
+    const constructor = await Constructor.findOne({
+      token: req.params.token,
+    }).populate("craftsmen"); // ← magie ici ✨
+
+    if (!constructor) {
+      return res.status(404).json({ result: false, error: "Invalid token." });
+    }
+
+    return res.status(200).json({ result: true, data: constructor });
+  } catch (error) {
+    console.error("Error fetching constructor:", error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
 module.exports = router;

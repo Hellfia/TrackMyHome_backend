@@ -1,148 +1,147 @@
 const express = require("express");
-const Craftsmen = require("../models/craftsmen");
 const router = express.Router();
-require("../models/connection");
-const { checkBody } = require("../modules/checkBody");
+const Craftsmen = require("../models/craftsmen");
 const Constructor = require("../models/constructors");
+const { checkBody } = require("../modules/checkBody");
+require("../models/connection");
 
+const fetch = require("node-fetch");
 const OPENCAGE_API_KEY = process.env.OPEN_CAGE_API;
 
-router.post("/", (req, res) => {
-  if (
-    !checkBody(req.body, [
-      "craftsmanName",
-      "craftsmanAddress",
-      "craftsmanZip",
-      "craftsmanCity",
-      "phoneNumber",
-      "constructeurToken",
-    ])
-  ) {
-    res.json({ result: false, error: "Missing or empty fields" });
-    return;
-  }
-
-  Craftsmen.findOne({ craftsmanName: req.body.craftsmanName }).then(
-    (craftsman) => {
-      if (craftsman) {
-        res.json({ result: false, error: "Craftsman already exists" });
-        return;
-      }
-
-      // Adresse complète pour géocodage
-      const fullAddress = `${req.body.craftsmanAddress}, ${req.body.craftsmanZip} ${req.body.craftsmanCity}`;
-      const encodedAddress = encodeURIComponent(fullAddress);
-      const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodedAddress}&key=${OPENCAGE_API_KEY}`;
-
-      fetch(url)
-        .then((response) => response.json())
-        .then((geoData) => {
-          if (geoData.results.length > 0) {
-            const { lat, lng } = geoData.results[0].geometry;
-
-            const newCraftman = new Craftsmen({
-              craftsmanName: req.body.craftsmanName,
-              craftsmanLogo: req.body.craftsmanLogo,
-              craftsmanAddress: req.body.craftsmanAddress,
-              craftsmanZip: req.body.craftsmanZip,
-              craftsmanCity: req.body.craftsmanCity,
-              craftsmanLat: lat,
-              craftsmanLong: lng,
-              phoneNumber: req.body.phoneNumber,
-            });
-
-            newCraftman.save().then((savedCraftsman) => {
-              // Ajout du craftsman dans le constructeur correspondant
-              Constructor.findOneAndUpdate(
-                { token: req.body.constructeurToken },
-                { $push: { craftsmen: savedCraftsman._id } },
-                { new: true }
-              )
-                .then(() => {
-                  res.json({ result: true, data: savedCraftsman });
-                })
-                .catch((error) => {
-                  console.error("Error updating constructor:", error);
-                  res.json({
-                    result: false,
-                    error: "Error linking craftsman to constructor",
-                  });
-                });
-            });
-          } else {
-            res.json({ result: false, error: "Unable to geocode address" });
-          }
-        })
-        .catch((error) => {
-          console.error("Error during geocoding:", error);
-          res.json({ result: false, error: "Geocoding API error" });
-        });
+// POST - Add a new craftsman
+router.post("/", async (req, res) => {
+  try {
+    if (
+      !checkBody(req.body, [
+        "craftsmanName",
+        "craftsmanAddress",
+        "craftsmanZip",
+        "craftsmanCity",
+        "phoneNumber",
+        "constructeurToken",
+      ])
+    ) {
+      return res
+        .status(400)
+        .json({ result: false, error: "Missing or empty fields" });
     }
-  );
+
+    const existing = await Craftsmen.findOne({
+      craftsmanName: req.body.craftsmanName,
+    });
+    if (existing) {
+      return res
+        .status(409)
+        .json({ result: false, error: "Craftsman already exists" });
+    }
+
+    const fullAddress = `${req.body.craftsmanAddress}, ${req.body.craftsmanZip} ${req.body.craftsmanCity}`;
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
+      fullAddress
+    )}&key=${OPENCAGE_API_KEY}`;
+
+    const response = await fetch(url);
+    const geoData = await response.json();
+
+    if (geoData.results.length === 0) {
+      return res
+        .status(400)
+        .json({ result: false, error: "Unable to geocode address" });
+    }
+
+    const { lat, lng } = geoData.results[0].geometry;
+
+    const newCraftsman = new Craftsmen({
+      craftsmanName: req.body.craftsmanName,
+      craftsmanLogo: req.body.craftsmanLogo || "",
+      craftsmanAddress: req.body.craftsmanAddress,
+      craftsmanZip: req.body.craftsmanZip,
+      craftsmanCity: req.body.craftsmanCity,
+      craftsmanLat: lat,
+      craftsmanLong: lng,
+      phoneNumber: req.body.phoneNumber,
+    });
+
+    const savedCraftsman = await newCraftsman.save();
+
+    await Constructor.findOneAndUpdate(
+      { token: req.body.constructeurToken },
+      { $push: { craftsmen: savedCraftsman._id } },
+      { new: true }
+    );
+
+    return res.status(201).json({ result: true, data: savedCraftsman });
+  } catch (error) {
+    console.error("Error in POST /craftsmen:", error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
-router.get("/:token", (req, res) => {
-  Constructor.findOne({ token: req.params.token })
-    .populate("craftsmen")
-    .then((craftsman) => {
-      if (craftsman) {
-        res.json({ result: true, data: craftsman.craftsmen });
-      } else {
-        res.status(404).json({ result: false, error: "Craftsman not found" });
-      }
-    });
+// GET - Get all craftsmen linked to a constructor by token
+router.get("/:token", async (req, res) => {
+  try {
+    const constructor = await Constructor.findOne({
+      token: req.params.token,
+    }).populate("craftsmen");
+
+    if (!constructor) {
+      return res
+        .status(404)
+        .json({ result: false, error: "Constructor not found" });
+    }
+
+    return res.status(200).json({ result: true, data: constructor.craftsmen });
+  } catch (error) {
+    console.error("Error in GET /craftsmen/:token:", error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
-// Modifier un artisan par nom
-router.patch("/:craftsmanName", (req, res) => {
-  const updates = req.body;
+// PATCH - Update a craftsman by name
+router.patch("/:craftsmanName", async (req, res) => {
+  try {
+    const updated = await Craftsmen.findOneAndUpdate(
+      { craftsmanName: req.params.craftsmanName },
+      req.body,
+      { new: true }
+    );
 
-  Craftsmen.findOneAndUpdate(
-    { craftsmanName: req.params.craftsmanName }, // Recherche par nom
-    updates, // Données à mettre à jour
-    { new: true } // Retourner l'objet mis à jour
-  )
-    .then((updatedCraftsman) => {
-      if (updatedCraftsman) {
-        res.json({ result: true, data: updatedCraftsman });
-      } else {
-        res.status(404).json({ result: false, error: "Craftsman not found" });
-      }
-    })
-    .catch((error) => {
-      console.error("Error updating craftsman:", error);
-      res.status(500).json({ result: false, error: "Internal server error" });
-    });
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ result: false, error: "Craftsman not found" });
+    }
+
+    return res.status(200).json({ result: true, data: updated });
+  } catch (error) {
+    console.error("Error in PATCH /craftsmen:", error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
-// Supprimer un artisan par nom
-router.delete("/:craftsmanName", (req, res) => {
-  Craftsmen.findOneAndDelete({ craftsmanName: req.params.craftsmanName }) // Recherche et suppression
-    .then((deletedCraftsman) => {
-      if (deletedCraftsman) {
-        // Retirer l'artisan du constructeur
-        Constructor.updateMany(
-          { craftsmen: deletedCraftsman._id },
-          { $pull: { craftsmen: deletedCraftsman._id } }
-        )
-          .then(() => {
-            res.json({ result: true, data: deletedCraftsman });
-          })
-          .catch((error) => {
-            console.error("Error removing craftsman from constructor:", error);
-            res.status(500).json({
-              result: false,
-              error: "Error unlinking craftsman from constructor",
-            });
-          });
-      } else {
-        res.status(404).json({ result: false, error: "Craftsman not found" });
-      }
-    })
-    .catch((error) => {
-      console.error("Error deleting craftsman:", error);
-      res.status(500).json({ result: false, error: "Internal server error" });
+// DELETE - Remove a craftsman by name
+router.delete("/:craftsmanName", async (req, res) => {
+  try {
+    const deleted = await Craftsmen.findOneAndDelete({
+      craftsmanName: req.params.craftsmanName,
     });
+
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ result: false, error: "Craftsman not found" });
+    }
+
+    await Constructor.updateMany(
+      { craftsmen: deleted._id },
+      { $pull: { craftsmen: deleted._id } }
+    );
+
+    return res.status(200).json({ result: true, data: deleted });
+  } catch (error) {
+    console.error("Error in DELETE /craftsmen:", error);
+    return res.status(500).json({ result: false, error: "Server error" });
+  }
 });
 
 module.exports = router;
